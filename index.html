@@ -1875,7 +1875,9 @@ function toggleWeeklyGoalFromDaily(id) {
 
 function renderDaily() {
   const dateStr = formatDate(currentDate);
-  document.getElementById('currentDate').textContent = formatDateKR(currentDate);
+  const currentDateEl = document.getElementById('currentDate');
+  if (!currentDateEl) return;  // 데일리 탭이 비활성 상태면 스킵
+  currentDateEl.textContent = formatDateKR(currentDate);
   const dayTasks = data.tasks.filter(t => t.date === dateStr);
 
   const total=dayTasks.length, done=dayTasks.filter(t=>t.status==='done').length,
