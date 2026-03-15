@@ -1,0 +1,2603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+<title>DUAL Planner</title>
+<style>
+:root {
+  --primary: #1F4E79;
+  --primary-light: #D6E4F0;
+  --primary-dark: #163A5C;
+  --bg: #F5F7FA;
+  --card: #FFFFFF;
+  --text: #2C3E50;
+  --text-light: #7F8C8D;
+  --border: #E0E6ED;
+  --pa: #E74C3C; --pa-bg: #FCE4EC;
+  --pb: #F39C12; --pb-bg: #FFF3E0;
+  --pc: #27AE60; --pc-bg: #E8F5E9;
+  --done: #BDC3C7;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --accent: #8E44AD;
+  --accent-bg: #F5EEF8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; padding-bottom: 72px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Header ─── */
+.header {
+  background: var(--primary); color: white;
+  padding: 14px 20px; position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.header h1 { font-size: 18px; font-weight: 700; }
+.header-sub { font-size: 11px; opacity: 0.7; }
+.header-sync { display: flex; gap: 6px; }
+.sync-btn {
+  background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 8px; padding: 6px 10px; color: white; font-size: 12px;
+  cursor: pointer; display: flex; align-items: center; gap: 4px;
+  font-family: inherit; transition: background 0.2s;
+}
+.sync-btn:active { background: rgba(255,255,255,0.3); }
+.sync-btn .icon { font-size: 14px; }
+.sync-btn.cloud { background: rgba(46,204,113,0.3); border-color: rgba(46,204,113,0.5); }
+.sync-btn.cloud.syncing { animation: cloudPulse 1s ease-in-out infinite; }
+@keyframes cloudPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+.cloud-status { font-size: 10px; color: rgba(255,255,255,0.6); text-align: right; padding-right: 12px; margin-top: 2px; }
+.sync-toast {
+  position: fixed; top: 60px; left: 50%; transform: translateX(-50%);
+  background: #2C3E50; color: white; padding: 10px 20px; border-radius: 10px;
+  font-size: 13px; z-index: 999; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.sync-toast.show { opacity: 1; }
+
+/* ─── Sync Modal (모바일 내보내기) ─── */
+.sync-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 9999; display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn 0.2s;
+}
+.sync-modal {
+  background: white; border-radius: 20px 20px 0 0; width: 100%; max-width: 500px;
+  padding: 24px 20px calc(20px + env(safe-area-inset-bottom));
+  animation: slideUp 0.3s;
+}
+.sync-modal h3 { font-size: 17px; font-weight: 700; text-align: center; margin-bottom: 16px; color: var(--primary); }
+.sync-modal .step {
+  display: flex; align-items: flex-start; gap: 12px; padding: 10px 0;
+  font-size: 15px; line-height: 1.5; border-bottom: 1px solid var(--border);
+}
+.sync-modal .step-num {
+  background: var(--primary); color: white; width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.sync-modal .step b { color: var(--primary); }
+.sync-modal-btn {
+  display: block; width: 100%; padding: 16px; margin-top: 16px; border: none;
+  border-radius: 14px; font-size: 17px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.sync-modal-btn.primary { background: var(--primary); color: white; }
+.sync-modal-btn.primary:active { opacity: 0.7; }
+.sync-modal-btn.cancel { background: var(--bg); color: var(--text-light); margin-top: 8px; }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+
+/* ─── Bottom Tab Bar ─── */
+.tab-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: white; border-top: 1px solid var(--border);
+  display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom);
+}
+.tab-item {
+  flex: 1; padding: 8px 0 6px; text-align: center;
+  cursor: pointer; transition: color 0.2s; color: var(--text-light);
+  border: none; background: none; font-family: inherit;
+}
+.tab-item.active { color: var(--primary); }
+.tab-icon { font-size: 22px; display: block; }
+.tab-label { font-size: 10px; margin-top: 2px; font-weight: 500; }
+
+/* ─── Pages ─── */
+.page { display: none; }
+.page.active { display: block; }
+
+/* ─── Mission Page ─── */
+.mission-page { padding: 20px 16px; }
+.mission-card {
+  background: var(--card); border-radius: 16px; padding: 24px 20px;
+  box-shadow: var(--shadow); margin-bottom: 16px;
+}
+.mission-card h3 {
+  font-size: 14px; color: var(--primary); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 8px;
+}
+.mission-textarea {
+  width: 100%; min-height: 120px; border: 1px solid var(--border);
+  border-radius: 12px; padding: 14px; font-size: 15px; font-family: inherit;
+  background: var(--bg); color: var(--text); resize: vertical; line-height: 1.6;
+}
+.mission-display {
+  font-size: 15px; line-height: 1.8; white-space: pre-wrap; color: var(--text);
+  padding: 12px 0;
+}
+.mission-empty {
+  color: var(--text-light); font-style: italic; font-size: 14px; padding: 20px 0;
+  text-align: center;
+}
+.mission-edit-btn {
+  background: var(--primary-light); color: var(--primary);
+  border: none; border-radius: 10px; padding: 10px 20px;
+  font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; margin-top: 8px;
+}
+.mission-quote {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white; border-radius: 16px; padding: 24px 20px;
+  margin-bottom: 16px; text-align: center;
+}
+.mission-quote .q { font-size: 16px; font-style: italic; line-height: 1.6; margin-bottom: 8px; }
+.mission-quote .a { font-size: 12px; opacity: 0.8; }
+
+/* ─── Roles Page ─── */
+.roles-page { padding: 20px 16px; }
+.role-card {
+  background: var(--card); border-radius: 14px; padding: 16px;
+  box-shadow: var(--shadow); margin-bottom: 10px;
+  display: flex; align-items: center; gap: 14px;
+  border-left: 4px solid var(--primary);
+}
+.role-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; background: var(--primary-light); flex-shrink: 0;
+}
+.role-info { flex: 1; min-width: 0; }
+.role-name { font-size: 16px; font-weight: 600; }
+.role-desc { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+.role-actions { display: flex; gap: 6px; }
+.role-action-btn {
+  background: none; border: none; font-size: 18px; cursor: pointer;
+  padding: 6px; border-radius: 8px; color: var(--text-light);
+}
+.add-role-btn {
+  background: var(--card); border: 2px dashed var(--border); border-radius: 14px;
+  padding: 18px; text-align: center; cursor: pointer; color: var(--text-light);
+  font-size: 14px; margin-top: 8px;
+}
+.add-role-btn:active { background: var(--bg); }
+
+/* ─── Weekly Campus ─── */
+.weekly-page { padding: 0 0 20px; }
+.week-nav {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: 12px 20px; background: white; border-bottom: 1px solid var(--border);
+  position: sticky; top: 52px; z-index: 99;
+}
+.week-nav button {
+  background: var(--primary-light); border: none; border-radius: 50%;
+  width: 34px; height: 34px; font-size: 18px; color: var(--primary);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.week-nav .week-label { font-size: 15px; font-weight: 600; color: var(--primary); }
+.week-nav .thisweek-btn {
+  font-size: 12px; background: var(--primary); color: white;
+  border: none; border-radius: 16px; padding: 4px 12px; cursor: pointer;
+  width: auto; height: auto;
+}
+
+.weekly-role-section { padding: 0 16px; margin-top: 16px; }
+.weekly-role-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+}
+.weekly-role-icon {
+  width: 32px; height: 32px; border-radius: 8px; background: var(--primary-light);
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.weekly-role-name { font-size: 15px; font-weight: 600; color: var(--primary); }
+.weekly-goal-count { font-size: 12px; color: var(--text-light); margin-left: auto; }
+
+.weekly-goal-card {
+  background: var(--card); border-radius: 12px; padding: 12px 14px;
+  margin-bottom: 8px; box-shadow: var(--shadow);
+  display: flex; align-items: center; gap: 10px;
+  border-left: 4px solid transparent;
+}
+.weekly-goal-card.wg-pa { border-left-color: var(--pa); }
+.weekly-goal-card.wg-pb { border-left-color: var(--pb); }
+.weekly-goal-card.wg-pc { border-left-color: var(--pc); }
+.wg-priority-badge {
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px;
+  flex-shrink: 0;
+}
+.wg-priority-badge.a { background: var(--pa-bg); color: var(--pa); }
+.wg-priority-badge.b { background: var(--pb-bg); color: var(--pb); }
+.wg-priority-badge.c { background: var(--pc-bg); color: var(--pc); }
+.wg-check {
+  width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border);
+  flex-shrink: 0; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 12px; transition: all 0.2s;
+}
+.wg-check.done { background: var(--pc); border-color: var(--pc); color: white; }
+.wg-title { font-size: 14px; flex: 1; min-width: 0; word-break: break-word; }
+.wg-title.done { text-decoration: line-through; color: var(--done); }
+.wg-delete { background: none; border: none; font-size: 16px; color: var(--text-light); cursor: pointer; padding: 4px; }
+.wg-deadline { font-size: 11px; color: var(--text-light); white-space: nowrap; margin-left: auto; padding: 2px 8px; border-radius: 8px; background: var(--bg); }
+.wg-deadline.warn-soon { background: var(--pb-bg); color: var(--pb); font-weight: 600; }
+.wg-deadline.warn-now { background: var(--pa-bg); color: var(--pa); font-weight: 700; animation: pulse 1.5s infinite; }
+.wg-deadline.warn-over { background: var(--pa); color: white; font-weight: 700; }
+
+.add-weekly-goal {
+  background: var(--card); border: 1px dashed var(--border); border-radius: 12px;
+  padding: 10px 14px; display: flex; align-items: center; gap: 10px;
+  cursor: pointer; color: var(--text-light); font-size: 13px; margin-bottom: 8px;
+}
+.add-weekly-goal:active { background: var(--bg); }
+
+.weekly-empty {
+  text-align: center; padding: 40px 20px; color: var(--text-light);
+}
+.weekly-empty .icon { font-size: 40px; margin-bottom: 8px; }
+
+/* ─── Daily Page ─── */
+.daily-page {}
+.date-nav {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: 12px 20px; background: white; border-bottom: 1px solid var(--border);
+  position: sticky; top: 52px; z-index: 99;
+}
+.date-nav button {
+  background: var(--primary-light); border: none; border-radius: 50%;
+  width: 36px; height: 36px; font-size: 18px; color: var(--primary);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.date-nav .current-date { font-size: 17px; font-weight: 600; color: var(--primary); cursor: pointer; }
+.date-nav .today-btn {
+  font-size: 12px; background: var(--primary); color: white;
+  border: none; border-radius: 16px; padding: 4px 12px; cursor: pointer;
+  width: auto; height: auto;
+}
+.stats-bar {
+  display: flex; gap: 8px; padding: 10px 20px;
+  background: white; border-bottom: 1px solid var(--border); overflow-x: auto;
+}
+.stat-chip {
+  flex-shrink: 0; padding: 4px 12px; border-radius: 16px;
+  font-size: 13px; font-weight: 500; background: var(--bg);
+}
+.task-list { padding: 12px 16px; }
+.priority-group { margin-bottom: 16px; }
+.priority-label {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: 700; margin-bottom: 8px;
+}
+.priority-label.a { background: var(--pa-bg); color: var(--pa); }
+.priority-label.b { background: var(--pb-bg); color: var(--pb); }
+.priority-label.c { background: var(--pc-bg); color: var(--pc); }
+.task-card {
+  background: var(--card); border-radius: 12px; padding: 14px 16px;
+  margin-bottom: 8px; box-shadow: var(--shadow);
+  display: flex; align-items: flex-start; gap: 12px;
+  border-left: 4px solid transparent; transition: all 0.2s;
+}
+.task-card.priority-a { border-left-color: var(--pa); }
+.task-card.priority-b { border-left-color: var(--pb); }
+.task-card.priority-c { border-left-color: var(--pc); }
+.task-card.status-done { opacity: 0.5; }
+.task-card.status-done .task-title { text-decoration: line-through; }
+.task-card.status-cancelled { opacity: 0.4; }
+.task-card.status-cancelled .task-title { text-decoration: line-through; }
+.task-check {
+  flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+  border: 2px solid var(--border); display: flex; align-items: center;
+  justify-content: center; cursor: pointer; font-size: 14px; margin-top: 2px;
+}
+.task-check.done { background: var(--pc); border-color: var(--pc); color: white; }
+.task-check.forwarded { background: var(--pb); border-color: var(--pb); color: white; }
+.task-check.cancelled { background: var(--done); border-color: var(--done); color: white; }
+.task-content { flex: 1; min-width: 0; }
+.task-title { font-size: 15px; font-weight: 500; line-height: 1.4; word-break: break-word; }
+.task-meta { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.task-tag { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--bg); color: var(--text-light); }
+.task-note { font-size: 12px; color: var(--text-light); margin-top: 4px; font-style: italic; }
+.task-deadline { font-size: 11px; padding: 2px 8px; border-radius: 8px; background: var(--bg); color: var(--text-light); }
+.task-deadline.warn-soon { background: var(--pb-bg); color: var(--pb); font-weight: 600; }
+.task-deadline.warn-now { background: var(--pa-bg); color: var(--pa); font-weight: 700; animation: pulse 1.5s infinite; }
+.task-deadline.warn-over { background: var(--pa); color: white; font-weight: 700; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* ─── Weekly Summary in Daily ─── */
+.weekly-summary {
+  margin: 8px 16px; background: var(--card); border-radius: 12px;
+  box-shadow: var(--shadow); overflow: hidden;
+}
+.weekly-summary-header {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  cursor: pointer; user-select: none; border: none; background: none;
+  width: 100%; font-family: inherit; color: var(--text); font-size: 13px;
+}
+.weekly-summary-header .ws-icon { font-size: 16px; }
+.weekly-summary-header .ws-title { font-weight: 600; color: var(--primary); }
+.weekly-summary-header .ws-count {
+  margin-left: auto; font-size: 12px; padding: 2px 10px;
+  border-radius: 10px; font-weight: 600;
+}
+.ws-count.has-remaining { background: var(--pb-bg); color: var(--pb); }
+.ws-count.all-done { background: var(--pc-bg); color: var(--pc); }
+.weekly-summary-header .ws-arrow {
+  font-size: 14px; color: var(--text-light); transition: transform 0.2s;
+}
+.weekly-summary.expanded .ws-arrow { transform: rotate(180deg); }
+.weekly-summary-body { display: none; padding: 0 14px 10px; }
+.weekly-summary.expanded .weekly-summary-body { display: block; }
+.ws-goal-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0;
+  border-bottom: 1px solid var(--bg); font-size: 13px;
+}
+.ws-goal-item:last-child { border-bottom: none; }
+.ws-goal-check {
+  width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border);
+  flex-shrink: 0; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 10px; transition: all 0.2s;
+}
+.ws-goal-check.done { background: var(--pc); border-color: var(--pc); color: white; }
+.ws-goal-text { flex: 1; min-width: 0; word-break: break-word; }
+.ws-goal-text.done { text-decoration: line-through; color: var(--done); }
+.ws-goal-role { font-size: 11px; color: var(--text-light); white-space: nowrap; }
+
+/* ─── Weekly Carryover Banner ─── */
+.weekly-carryover {
+  margin: 12px 16px 0; background: var(--pb-bg); border-radius: 12px;
+  padding: 12px 14px; border-left: 4px solid var(--pb);
+}
+.carryover-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  font-size: 13px; font-weight: 600; color: var(--pb);
+}
+.carryover-item {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  font-size: 13px; color: var(--text);
+}
+.carryover-item .co-role { font-size: 11px; color: var(--text-light); }
+.carryover-btn {
+  margin-top: 8px; padding: 8px 16px; background: var(--pb); color: white;
+  border: none; border-radius: 10px; font-size: 13px; font-weight: 600;
+  cursor: pointer; width: 100%;
+}
+.carryover-btn:active { opacity: 0.8; }
+
+/* ─── Daily Carryover Banner ─── */
+.daily-carryover {
+  margin: 12px 16px 0; background: var(--pb-bg); border-radius: 12px;
+  padding: 12px 14px; border-left: 4px solid var(--pb);
+}
+.daily-carryover .carryover-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  font-size: 13px; font-weight: 600; color: var(--pb);
+}
+.daily-carryover .co-task {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  font-size: 13px; color: var(--text);
+}
+.daily-carryover .co-priority {
+  font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px;
+}
+.daily-carryover .co-priority.pa { background: var(--pa-bg); color: var(--pa); }
+.daily-carryover .co-priority.pb { background: var(--pb-bg); color: var(--pb); }
+.daily-carryover .co-priority.pc { background: var(--pc-bg); color: var(--pc); }
+
+/* ─── Memo Page ─── */
+.memo-page { padding: 0 0 20px; }
+.memo-nav {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: 12px 20px; background: white; border-bottom: 1px solid var(--border);
+  position: sticky; top: 52px; z-index: 99;
+}
+.memo-nav button {
+  background: var(--primary-light); border: none; border-radius: 50%;
+  width: 34px; height: 34px; font-size: 18px; color: var(--primary);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.memo-nav .memo-week-label { font-size: 15px; font-weight: 600; color: var(--primary); }
+.memo-nav .memo-thisweek-btn {
+  font-size: 12px; background: var(--primary); color: white;
+  border: none; border-radius: 16px; padding: 4px 12px; cursor: pointer;
+  width: auto; height: auto;
+}
+.memo-textarea {
+  width: 100%; min-height: 300px; border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px; font-size: 15px; font-family: inherit;
+  background: var(--bg); color: var(--text); resize: vertical; line-height: 1.8;
+}
+.memo-textarea:focus { outline: none; border-color: var(--primary); background: white; }
+.memo-card {
+  margin: 12px 16px; background: var(--card); border-radius: 16px;
+  padding: 20px; box-shadow: var(--shadow);
+}
+.memo-card h3 { font-size: 14px; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.memo-saved { font-size: 12px; color: var(--text-light); margin-top: 8px; text-align: right; }
+.memo-weekly-summary {
+  margin: 12px 16px 0; background: var(--primary-light); border-radius: 12px;
+  padding: 14px 16px;
+}
+.memo-weekly-summary h4 { font-size: 13px; color: var(--primary); margin-bottom: 8px; }
+.memo-wg-item {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+  font-size: 13px; color: var(--text);
+}
+.memo-wg-item .wg-done-mark { color: var(--pc); }
+.memo-wg-item .wg-pending-mark { color: var(--text-light); }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-light); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* ─── FABs ─── */
+.fab {
+  position: fixed; bottom: 80px; right: 20px;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--primary); color: white; border: none; font-size: 26px;
+  box-shadow: 0 4px 16px rgba(31,78,121,0.4); cursor: pointer; z-index: 90;
+  display: none; align-items: center; justify-content: center;
+}
+.fab.visible { display: flex; }
+.export-fab {
+  position: fixed; bottom: 80px; left: 20px; height: 36px;
+  border-radius: 18px; background: var(--card); color: var(--primary);
+  border: 1px solid var(--border); font-size: 12px; padding: 0 14px;
+  box-shadow: var(--shadow); cursor: pointer; z-index: 90;
+  display: none; align-items: center; gap: 4px;
+}
+.export-fab.visible { display: flex; }
+
+/* ─── Modals ─── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.modal-overlay.active { opacity: 1; pointer-events: all; }
+.modal {
+  background: white; border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 500px; max-height: 85vh;
+  overflow-y: auto; padding: 24px 20px 40px;
+  transform: translateY(100%); transition: transform 0.3s ease-out;
+}
+.modal-overlay.active .modal { transform: translateY(0); }
+.modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.modal h2 { font-size: 18px; margin-bottom: 20px; color: var(--primary); }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-light); margin-bottom: 6px; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 15px; font-family: inherit; background: var(--bg); color: var(--text); -webkit-appearance: none;
+}
+.form-group textarea { resize: vertical; min-height: 60px; }
+.form-group select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%237F8C8D'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.priority-selector { display: flex; gap: 8px; }
+.priority-option {
+  flex: 1; padding: 12px; border-radius: 10px; border: 2px solid var(--border);
+  text-align: center; font-weight: 700; font-size: 16px; cursor: pointer;
+}
+.priority-option.a { color: var(--pa); }
+.priority-option.b { color: var(--pb); }
+.priority-option.c { color: var(--pc); }
+.priority-option.selected.a { background: var(--pa-bg); border-color: var(--pa); }
+.priority-option.selected.b { background: var(--pb-bg); border-color: var(--pb); }
+.priority-option.selected.c { background: var(--pc-bg); border-color: var(--pc); }
+.btn-submit {
+  width: 100%; padding: 14px; background: var(--primary); color: white;
+  border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 8px;
+}
+.btn-delete {
+  width: 100%; padding: 12px; background: none; color: var(--pa);
+  border: 1px solid var(--pa); border-radius: 12px; font-size: 14px; cursor: pointer; margin-top: 8px;
+}
+.status-options { display: flex; flex-direction: column; gap: 8px; }
+.status-option {
+  padding: 14px 16px; border-radius: 12px; border: 1px solid var(--border);
+  cursor: pointer; display: flex; align-items: center; gap: 12px; font-size: 15px;
+}
+.status-option:active { background: var(--bg); }
+.export-content {
+  background: var(--bg); border-radius: 10px; padding: 16px;
+  font-family: 'Courier New', monospace; font-size: 13px;
+  white-space: pre-wrap; word-break: break-all; max-height: 50vh;
+  overflow-y: auto; line-height: 1.5;
+}
+.copy-btn {
+  margin-top: 12px; padding: 12px; background: var(--primary); color: white;
+  border: none; border-radius: 10px; width: 100%; font-size: 15px; cursor: pointer;
+}
+
+/* ─── Icon Picker ─── */
+.icon-grid {
+  display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-top: 8px;
+}
+.icon-option {
+  width: 100%; aspect-ratio: 1; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--bg); font-size: 22px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.icon-option.selected { border-color: var(--primary); background: var(--primary-light); }
+
+/* ─── English Quiz Page ─── */
+.eng-page { padding: 16px; max-width: 600px; margin: 0 auto; }
+.eng-stats {
+  display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;
+}
+.eng-stat {
+  padding: 6px 14px; border-radius: 16px; font-size: 13px; font-weight: 500;
+  background: var(--primary-light); color: var(--primary);
+}
+.eng-export-btn {
+  padding: 6px 14px; border-radius: 16px; font-size: 13px; font-weight: 500;
+  background: var(--card); color: var(--text-light); border: 1px solid var(--border);
+  cursor: pointer; margin-left: auto; transition: all 0.2s;
+}
+.eng-export-btn:hover { background: var(--primary-light); color: var(--primary); }
+.eng-quiz-card {
+  background: var(--card); border-radius: 14px; padding: 18px;
+  box-shadow: var(--shadow); margin-bottom: 12px;
+  border-left: 4px solid var(--primary); transition: border-left-color 0.3s;
+}
+.eng-quiz-card.eng-correct { border-left-color: var(--pc); background: var(--pc-bg); }
+.eng-quiz-card.eng-close { border-left-color: var(--pb); background: var(--pb-bg); }
+.eng-quiz-card.eng-wrong { border-left-color: var(--pa); background: var(--pa-bg); }
+.eng-q-num { font-size: 12px; color: var(--text-light); font-weight: 600; margin-bottom: 6px; }
+.eng-q-type { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 11px; font-weight: 600; background: var(--accent-bg); color: var(--accent); margin-left: 8px; }
+.eng-quiz-card[data-type="B"] .eng-q-type { background: #fff3e0; color: #e65100; }
+.eng-quiz-card[data-type="C"] .eng-q-type { background: #e8f5e9; color: #2e7d32; }
+.eng-q-text { font-size: 17px; font-weight: 600; line-height: 1.5; margin-bottom: 10px; }
+.eng-hint { font-size: 13px; font-weight: 400; color: #888; margin-top: 4px; }
+.eng-input {
+  width: 100%; padding: 12px 14px; border: 2px solid var(--border);
+  border-radius: 10px; font-size: 16px; font-family: inherit;
+  background: var(--bg); color: var(--text); transition: border-color 0.2s;
+}
+.eng-input:focus { outline: none; border-color: var(--primary); }
+.eng-input:disabled { opacity: 0.7; background: transparent; }
+.eng-feedback { display: none; margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.5; }
+.eng-fb-correct { color: var(--pc); font-weight: 600; }
+.eng-fb-close { color: var(--pb); font-weight: 600; }
+.eng-fb-wrong { color: var(--pa); font-weight: 600; }
+.eng-fb-answer { font-style: italic; }
+.eng-fb-ctx { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+.eng-lesson { margin-top: 10px; padding: 10px 12px; background: rgba(0,0,0,0.03); border-radius: 8px; font-size: 13px; line-height: 1.6; }
+.eng-lesson-ctx { color: var(--text-light); margin-bottom: 6px; }
+.eng-lesson-key { color: var(--primary); font-weight: 600; margin-bottom: 4px; }
+.eng-lesson-pair { padding: 6px 0; color: var(--text); }
+.eng-lesson-tags { margin-top: 4px; font-size: 11px; color: var(--text-light); }
+.eng-accept-btn { display: inline-block; margin-top: 8px; padding: 6px 14px; background: var(--pc); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.eng-fb-accept {
+  display: inline-block; margin-top: 8px; padding: 6px 14px;
+  background: var(--pc); color: white; border: none; border-radius: 8px;
+  font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.eng-fb-accept:active { opacity: 0.7; }
+.eng-reveal-btn {
+  width: 100%; padding: 14px; background: var(--primary); color: white;
+  border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
+  cursor: pointer; margin-top: 8px;
+}
+.eng-result {
+  background: var(--card); border-radius: 14px; padding: 20px;
+  box-shadow: var(--shadow); text-align: center; margin-top: 16px;
+}
+.eng-result h3 { color: var(--primary); margin-bottom: 8px; }
+
+@media (min-width: 768px) {
+  .task-list, .mission-page, .roles-page, .eng-page { max-width: 600px; margin: 0 auto; }
+  .weekly-page .weekly-role-section { max-width: 600px; margin-left: auto; margin-right: auto; }
+  .modal { border-radius: 20px; margin-bottom: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div><h1 id="pageTitle">DUAL Planner</h1><div class="header-sub" id="pageSub">Weekly · Memo · Roles · English · Mission</div></div>
+  <div class="header-sync">
+    <button class="sync-btn cloud" id="cloudSyncBtn" onclick="cloudSync()"><span class="icon">☁️</span>동기화</button>
+    <button class="sync-btn" onclick="syncExport()"><span class="icon">📤</span>내보내기</button>
+    <button class="sync-btn" onclick="document.getElementById('syncFileInput').click()"><span class="icon">📥</span>가져오기</button>
+    <input type="file" id="syncFileInput" accept=".json" style="display:none" onchange="syncImport(event)">
+  </div>
+</div>
+<div class="cloud-status" id="cloudStatus"></div>
+<div class="sync-toast" id="syncToast"></div>
+
+<!-- ═══════ Mission Page ═══════ -->
+<div class="page" id="pageMission">
+  <div class="mission-page">
+    <div class="mission-quote">
+      <div class="q">"하고자 하는 것, 하고 싶은 것을 찾는 것이<br>가장 중요한 활동이다."</div>
+      <div class="a">— 김민철</div>
+    </div>
+    <div class="mission-card">
+      <h3>🧭 나의 사명</h3>
+      <div id="missionDisplay"></div>
+    </div>
+    <div class="mission-card">
+      <h3>🎯 핵심 가치</h3>
+      <div id="valuesDisplay"></div>
+    </div>
+    <div class="mission-card">
+      <h3>🌟 장기 목표</h3>
+      <div id="goalsDisplay"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ Roles Page ═══════ -->
+<div class="page" id="pageRoles">
+  <div class="roles-page">
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:16px;">삶의 핵심 역할을 정의하세요. 위클리 캠퍼스에서 역할별 주간 목표를 설정합니다.</p>
+    <div id="rolesList"></div>
+    <div class="add-role-btn" onclick="openRoleModal()">+ 새 역할 추가</div>
+  </div>
+</div>
+
+<!-- ═══════ Weekly Campus Page ═══════ -->
+<div class="page active" id="pageWeekly">
+  <div class="weekly-page">
+    <div class="week-nav">
+      <button onclick="changeWeek(-1)">&#8249;</button>
+      <span class="week-label" id="weekLabel"></span>
+      <button onclick="changeWeek(1)">&#8250;</button>
+      <button class="thisweek-btn" onclick="goThisWeek()">이번 주</button>
+    </div>
+    <div id="weeklyContent"></div>
+  </div>
+</div>
+
+<!-- ═══════ Memo Page ═══════ -->
+<div class="page" id="pageMemo">
+  <div class="memo-page">
+    <div class="memo-nav">
+      <button onclick="changeMemoWeek(-1)">&#8249;</button>
+      <span class="memo-week-label" id="memoWeekLabel"></span>
+      <button onclick="changeMemoWeek(1)">&#8250;</button>
+      <button class="memo-thisweek-btn" onclick="goMemoThisWeek()">이번 주</button>
+    </div>
+    <div id="memoWeeklySummary"></div>
+    <div class="memo-card">
+      <h3>📝 주간 메모</h3>
+      <textarea class="memo-textarea" id="memoText" placeholder="이번 주에 기록할 생각, 메모, 아이디어..." oninput="autoSaveMemo()"></textarea>
+      <div class="memo-saved" id="memoSavedAt"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ English Quiz Page ═══════ -->
+<div class="page" id="pageEnglish">
+  <div class="eng-page">
+    <div id="engStats" class="eng-stats"></div>
+    <div id="engQuizArea"></div>
+  </div>
+</div>
+
+<!-- FABs -->
+<button class="fab" id="mainFab" onclick="handleFab()">+</button>
+<button class="export-fab" id="exportFab" onclick="openExportModal()">📋 내보내기</button>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <button class="tab-item active" data-page="pageWeekly" onclick="switchTab(this)">
+    <span class="tab-icon">📅</span><span class="tab-label">위클리</span>
+  </button>
+  <button class="tab-item" data-page="pageMemo" onclick="switchTab(this)">
+    <span class="tab-icon">📝</span><span class="tab-label">메모</span>
+  </button>
+  <button class="tab-item" data-page="pageRoles" onclick="switchTab(this)">
+    <span class="tab-icon">👤</span><span class="tab-label">역할</span>
+  </button>
+  <button class="tab-item" data-page="pageEnglish" onclick="switchTab(this)">
+    <span class="tab-icon">🇺🇸</span><span class="tab-label">영어</span>
+  </button>
+  <button class="tab-item" data-page="pageMission" onclick="switchTab(this)">
+    <span class="tab-icon">🧭</span><span class="tab-label">사명</span>
+  </button>
+</div>
+
+<!-- ═══════ Modals ═══════ -->
+
+<!-- Mission Edit Modal -->
+<div class="modal-overlay" id="missionModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="missionModalTitle">사명 수정</h2>
+    <div class="form-group">
+      <label id="missionFieldLabel">나의 사명</label>
+      <textarea id="missionInput" rows="4" placeholder="나는 어떤 사람이 되고 싶은가?"></textarea>
+    </div>
+    <button class="btn-submit" onclick="saveMissionField()">저장</button>
+  </div>
+</div>
+
+<!-- Role Modal -->
+<div class="modal-overlay" id="roleModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="roleModalTitle">역할 추가</h2>
+    <div class="form-group">
+      <label>아이콘</label>
+      <div class="icon-grid" id="iconGrid"></div>
+    </div>
+    <div class="form-group">
+      <label>역할 이름</label>
+      <input type="text" id="roleNameInput" placeholder="예: 교수, 아버지, 연구자">
+    </div>
+    <div class="form-group">
+      <label>설명 (선택)</label>
+      <input type="text" id="roleDescInput" placeholder="이 역할에서의 핵심 책임">
+    </div>
+    <button class="btn-submit" id="roleSubmitBtn" onclick="saveRole()">추가하기</button>
+    <button class="btn-delete" id="roleDeleteBtn" style="display:none" onclick="deleteRole()">삭제하기</button>
+  </div>
+</div>
+
+<!-- Weekly Goal Modal -->
+<div class="modal-overlay" id="weeklyGoalModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>주간 목표 추가</h2>
+    <div class="form-group">
+      <label id="wgRoleLabel">역할</label>
+      <input type="text" id="wgInput" placeholder="이번 주에 이 역할에서 달성할 목표">
+    </div>
+    <div class="form-group">
+      <label>중요도</label>
+      <div class="priority-selector">
+        <div class="priority-option a" data-p="A" onclick="selectWgPriority('A')">A<br><span style="font-size:11px;font-weight:400">긴급+중요</span></div>
+        <div class="priority-option b" data-p="B" onclick="selectWgPriority('B')">B<br><span style="font-size:11px;font-weight:400">중요</span></div>
+        <div class="priority-option c selected" data-p="C" onclick="selectWgPriority('C')">C<br><span style="font-size:11px;font-weight:400">하면 좋은</span></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>마감 요일</label>
+      <select id="wgDeadlineDay">
+        <option value="">설정 안 함</option>
+        <option value="1">월요일</option>
+        <option value="2">화요일</option>
+        <option value="3">수요일</option>
+        <option value="4">목요일</option>
+        <option value="5">금요일</option>
+        <option value="6">토요일</option>
+        <option value="0">일요일</option>
+      </select>
+    </div>
+    <button class="btn-submit" onclick="saveWeeklyGoal()">추가</button>
+  </div>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="taskModalTitle">할 일 추가</h2>
+    <div class="form-group">
+      <label>우선순위</label>
+      <div class="priority-selector">
+        <div class="priority-option a" data-p="A" onclick="selectPriority('A')">A<br><span style="font-size:11px;font-weight:400">긴급+중요</span></div>
+        <div class="priority-option b" data-p="B" onclick="selectPriority('B')">B<br><span style="font-size:11px;font-weight:400">중요</span></div>
+        <div class="priority-option c" data-p="C" onclick="selectPriority('C')">C<br><span style="font-size:11px;font-weight:400">하면 좋은</span></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>할 일</label>
+      <input type="text" id="taskInput" placeholder="할 일을 입력하세요">
+    </div>
+    <div class="form-group">
+      <label>역할</label>
+      <select id="taskRoleInput"></select>
+    </div>
+    <div class="form-group">
+      <label>마감 시간</label>
+      <select id="taskDeadlineInput">
+        <option value="">설정 안 함</option>
+        <option value="09:00">오전 9시</option>
+        <option value="10:00">오전 10시</option>
+        <option value="11:00">오전 11시</option>
+        <option value="12:00">정오 12시</option>
+        <option value="13:00">오후 1시</option>
+        <option value="14:00">오후 2시</option>
+        <option value="15:00">오후 3시</option>
+        <option value="16:00">오후 4시</option>
+        <option value="17:00">오후 5시 (퇴근 전)</option>
+        <option value="18:00">오후 6시</option>
+        <option value="20:00">오후 8시</option>
+        <option value="22:00">오후 10시</option>
+        <option value="23:59">자정 전</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>메모 (선택)</label>
+      <textarea id="noteInput" rows="2" placeholder="메모 사항"></textarea>
+    </div>
+    <button class="btn-submit" id="taskSubmitBtn" onclick="saveTask()">추가하기</button>
+    <button class="btn-delete" id="taskDeleteBtn" style="display:none" onclick="deleteTask()">삭제하기</button>
+  </div>
+</div>
+
+<!-- Status Modal -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>상태 변경</h2>
+    <div class="status-options">
+      <div class="status-option" onclick="setStatus('pending')"><span class="icon" style="font-size:20px">☐</span> 대기</div>
+      <div class="status-option" onclick="setStatus('done')"><span class="icon" style="font-size:20px">✔</span> 완료</div>
+      <div class="status-option" onclick="setStatus('forwarded')"><span class="icon" style="font-size:20px">→</span> 이월 (내일로)</div>
+      <div class="status-option" onclick="setStatus('cancelled')"><span class="icon" style="font-size:20px">✖</span> 취소</div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2>📋 Cowork 내보내기</h2>
+    <p style="font-size:13px;color:var(--text-light);margin-bottom:12px;">아래를 복사 → Claude Cowork에 붙여넣기 → "플래너 연동해줘" 라고 말하세요.</p>
+    <div class="export-content" id="exportContent"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button class="copy-btn" onclick="copyExport()" style="flex:1">복사하기</button>
+    </div>
+    <div style="background:var(--primary-light);border-radius:10px;padding:12px;margin-top:12px;font-size:12px;color:var(--primary-dark);line-height:1.6;">
+      <strong>💡 사용법</strong><br>
+      1. 복사 버튼 클릭<br>
+      2. Claude Cowork 채팅창에 붙여넣기<br>
+      3. "플래너 데이터 반영해줘" 또는 "아침 루틴"이라고 말하기<br>
+      → 모닝 브리핑에 오늘 할 일이 함께 정리됩니다.
+    </div>
+  </div>
+</div>
+
+<input type="date" id="hiddenDatePicker" style="position:absolute;opacity:0;pointer-events:none;" onchange="pickDate(this.value)">
+
+<script>
+// ═══════ DATA ═══════
+const KEYS = {
+  mission: 'fp_mission', values: 'fp_values', goals: 'fp_goals',
+  roles: 'fp_roles', weeklyGoals: 'fp_weekly_goals', tasks: 'fp_tasks'
+};
+let data = { mission:'', values:'', goals:'', roles:[], weeklyGoals:[], tasks:[] };
+
+const ROLE_ICONS = ['🎓','👨‍🏫','🔬','💼','👨‍👩‍👦','🏌️','🎮','📚','💻','🤝','🧠','❤️','🏃','🎯','✈️','🎵','📊','🛠️'];
+
+// ═══════ 기본값 (Cowork 연동) ═══════
+const DEFAULTS = {
+  values: `완결력 (Completion Power)\n시작한 것을 끝까지 만들어내는 힘. 결과물로 증명한다.\n\n지속가능한 균형 (Sustainable Balance)\n폭발적 성장보다 오래 지속할 수 있는 구조를 설계한다. 역할 간 충돌 없이 병행하는 삶.\n\n자기증명 (Self-Proof)\n말이 아니라 직접 보여준다. 교수가 직접 만들고, 아버지가 직접 실천한다.`,
+  goals: `[학자] 2028년까지 게임기반학습 분야 고유 프레임워크 정립, 국제 저널 3편 게재\n\n[아버지] 매 분기 1회 아들과 함께하는 프로젝트 실행 및 기록 (2027년 중학 졸업까지)\n\n[사업가] 2027년까지 월 고정 수익 파이프라인 5개 확보 (교수 급여 + 연구과제 + 사다리 협업 + 인디게임 수익 + 강의/컨설팅)\n\n[개발자] 2026년 내 인디게임 1편 스팀 출시, 이후 매년 1편. 2028년 누적 다운로드 1만\n\n[공인] 체중 80kg 달성 및 유지. 학기당 1회 이상 외부 강연/미디어 출연으로 게임교육 전문가 이미지 구축`,
+  roles: [
+    { id: 'role_prof', name: '교수자', desc: '강의와 교수법을 책임감 있게 수행', icon: '👨‍🏫' },
+    { id: 'role_dept', name: '학과장', desc: '학과 운영과 신입생 관리', icon: '🎓' },
+    { id: 'role_researcher', name: '연구자', desc: '연구과제와 논문 수행', icon: '🔬' },
+    { id: 'role_admin', name: '행정가', desc: '학교 행정 업무 처리', icon: '📊' },
+    { id: 'role_business', name: '사업가', desc: '안정적 수익 파이프라인 창출', icon: '💼' },
+    { id: 'role_family', name: '가장과 아들', desc: '가족과 건강을 돌보는 역할', icon: '👨‍👩‍👦' }
+  ]
+};
+
+// 위클리 목표 자동 생성 — 비활성화 (수동 입력 방식 사용)
+function generateWeeklyDefaults() { /* no-op */ }
+
+// ═══════ localStorage 안전 래퍼 (드랍박스 모바일 등 미지원 환경 대응) ═══════
+let _lsOK = false;
+try { const _t='_fp_test'; localStorage.setItem(_t,'1'); localStorage.removeItem(_t); _lsOK=true; } catch(e){}
+
+function _lsGet(k) { try { return _lsOK ? localStorage.getItem(k) : null; } catch(e){ return null; } }
+function _lsSet(k,v) { try { if(_lsOK) localStorage.setItem(k,v); } catch(e){} }
+function _lsRemove(k) { try { if(_lsOK) localStorage.removeItem(k); } catch(e){} }
+
+function load() {
+  // 1) localStorage에서 기존 데이터 복원 시도
+  Object.keys(KEYS).forEach(k => {
+    try {
+      const v = _lsGet(KEYS[k]);
+      if (v) data[k] = JSON.parse(v);
+    } catch(e) {}
+  });
+  // 2) 기본값 적용 (비어있으면)
+  ['values','goals'].forEach(k => {
+    if (!data[k] && DEFAULTS[k]) { data[k] = DEFAULTS[k]; save(k); }
+  });
+  // 3) 역할 기본값 — DEFAULTS와 동기화 (이름이 바뀌었으면 업데이트)
+  if (data.roles.length === 0 || !data.roles.some(r => r.name === '교수자')) {
+    // 구 역할 ID → 신 역할 ID 매핑 (위클리/데일리 목표 마이그레이션)
+    const _oldToNew = {
+      'role_scholar': 'role_prof', 'role_father': 'role_family',
+      'role_developer': 'role_business', 'role_public': 'role_family'
+    };
+    data.roles = JSON.parse(JSON.stringify(DEFAULTS.roles));
+    // 기존 위클리/데일리 목표의 roleId 마이그레이션
+    [data.weeklyGoals, data.tasks].forEach(arr => {
+      if (!arr) return;
+      arr.forEach(item => {
+        if (item.roleId && _oldToNew[item.roleId]) item.roleId = _oldToNew[item.roleId];
+      });
+    });
+    save('roles'); save('weeklyGoals'); save('tasks');
+  }
+  // ── 1회성 전체 정리 + 이번주 목표 입력 (v3) ──
+  if (!_lsGet('fp_cleanup_done_v3')) {
+    // 1) 위클리 목표 전부 삭제
+    data.weeklyGoals = [];
+
+    // 2) 역할 이름 → ID 매핑
+    const _r = {};
+    data.roles.forEach(r => { _r[r.name] = r.id; });
+
+    // 3) 이번 주 키 계산
+    function _ws(d) { const dt=new Date(d); const dy=dt.getDay(); const df=dy===0?-6:1-dy; dt.setDate(dt.getDate()+df); dt.setHours(0,0,0,0); return dt; }
+    function _wk(d) { const y=d.getFullYear(); const s=new Date(y,0,1); const df=(d-s+(s.getTimezoneOffset()-d.getTimezoneOffset())*60000)/86400000; const wn=Math.ceil((df+s.getDay()+1)/7); return y+'-W'+String(wn).padStart(2,'0'); }
+    function _fd(ws,dow) { const dl=new Date(ws); const off=dow===0?6:dow-1; dl.setDate(dl.getDate()+off); return dl.getFullYear()+'-'+String(dl.getMonth()+1).padStart(2,'0')+'-'+String(dl.getDate()).padStart(2,'0'); }
+    const _weekStart = _ws(new Date());
+    const _weekKey = _wk(_weekStart);
+
+    // 4) 이번 주 목표 (3/2~3/8)
+    const _goals = [
+      // 교수자 (교육자 역할)
+      { role:'교수자', title:'개강 1주차 강의 실행 — 수업 후 피드백 메모 작성', dd:5 },
+      { role:'교수자', title:'게이미피케이션 교수법 적용 수업 1건 설계 초안', dd:0 },
+      // 학과장
+      { role:'학과장', title:'신임 교원 1차 면접 참여 및 평가 의견 정리 (3/4)', dd:3 },
+      { role:'학과장', title:'2학기 학과 운영 계획 — 핵심 일정 캘린더 반영', dd:5 },
+      // 연구자 (학자 역할)
+      { role:'연구자', title:'디지털 교과서 개인화 알고리즘 — 주간 마일스톤 점검 및 다음 단계 정의', dd:4 },
+      { role:'연구자', title:'게임기반학습 설계 매뉴얼 — 최신 논문 1편 리뷰 후 핵심 인사이트 메모', dd:5 },
+      // 사업가 (개발자 + 사업가 역할)
+      { role:'사업가', title:'사다리스쿨 협업 — 이번 주 액션 아이템 1개 실행', dd:4 },
+      { role:'사업가', title:'인디게임 스팀 출시 로드맵 — 3월 마일스톤 구체화', dd:5 },
+      // 가장과 아들 (아빠/남편 역할)
+      { role:'가장과 아들', title:'러닝 3회 완료 (6km×3) — 체중 80kg 목표 진행', dd:0 },
+      { role:'가장과 아들', title:'아들과 주말 활동 1건 계획 및 실행', dd:0 }
+    ];
+
+    _goals.forEach(g => {
+      const rid = _r[g.role];
+      if (!rid) return;
+      data.weeklyGoals.push({
+        id: 'wg_' + Date.now().toString() + Math.random().toString(36).slice(2,6),
+        week: _weekKey,
+        roleId: rid,
+        title: g.title,
+        done: false,
+        deadlineDate: _fd(_weekStart, g.dd),
+        deadlineDay: g.dd
+      });
+    });
+    save('weeklyGoals');
+    _lsRemove('fp_weekly_defaults_ver');
+    _lsRemove('fp_cleanup_done_v1');
+    _lsRemove('fp_cleanup_done_v2');
+    _lsSet('fp_cleanup_done_v3', '1');
+  }
+}
+function save(key) {
+  _lsSet(KEYS[key], JSON.stringify(data[key]));
+}
+
+// ═══════ CLOUD SYNC (Google Apps Script 백엔드) ═══════
+
+// ⚠️ 배포 후 아래 URL을 교체하세요
+const CLOUD_SYNC_URL = 'https://script.google.com/macros/s/AKfycbwGiYjD-FSnkhkWhp7KIGHWxfvsPaKIqewtyeDaCoblS8ZEUgtb5wtITQU2Vuo4j9k/exec';  // Apps Script 웹앱 배포 URL
+
+let _cloudSyncing = false;
+let _lastCloudSync = null;
+
+function updateCloudStatus(msg) {
+  const el = document.getElementById('cloudStatus');
+  if (el) el.textContent = msg;
+}
+
+async function cloudSync(direction) {
+  if (!CLOUD_SYNC_URL) {
+    showToast('☁️ 클라우드 URL이 설정되지 않았습니다. Apps Script 배포 후 URL을 입력하세요.');
+    return;
+  }
+  if (_cloudSyncing) return;
+  _cloudSyncing = true;
+
+  const btn = document.getElementById('cloudSyncBtn');
+  if (btn) btn.classList.add('syncing');
+  updateCloudStatus('동기화 중...');
+
+  try {
+    // 1) 서버에서 최신 데이터 가져오기
+    const res = await fetch(CLOUD_SYNC_URL + '?action=read');
+    const result = await res.json();
+
+    if (result.status === 'ok' && result.data) {
+      const remote = result.data;
+      const remoteTime = remote._synced ? new Date(remote._synced).getTime() : 0;
+      const localTime = _lastCloudSync ? _lastCloudSync.getTime() : 0;
+
+      // 서버 데이터가 더 최신이면 로컬에 반영 (플래너가 오프라인이었던 사이 Cowork이 수정한 경우)
+      if (remoteTime > localTime && direction !== 'push') {
+        ['mission','values','goals','roles','weeklyGoals','tasks'].forEach(k => {
+          if (remote[k] != null) { data[k] = remote[k]; save(k); }
+        });
+        if (remote.engDB && remote.engDB.sentences) {
+          engDB = remote.engDB;
+          saveEngDB();
+        }
+        try { renderAll(); } catch(e) {}
+      }
+    }
+
+    // 2) 로컬 데이터를 서버에 저장
+    const exportData = {
+      _format: 'dual_planner_sync',
+      _version: 2,
+      _exported: new Date().toISOString(),
+      _device: navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop',
+      mission: data.mission,
+      values: data.values,
+      goals: data.goals,
+      roles: data.roles,
+      weeklyGoals: data.weeklyGoals,
+      tasks: data.tasks,
+      engDB: engDB
+    };
+
+    await fetch(CLOUD_SYNC_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save', data: exportData, source: 'planner' }),
+      mode: 'no-cors'  // Apps Script CORS 제한 대응
+    });
+
+    _lastCloudSync = new Date();
+    updateCloudStatus('☁️ ' + _lastCloudSync.toLocaleTimeString('ko-KR') + ' 동기화됨');
+    showToast('☁️ 클라우드 동기화 완료');
+
+  } catch(err) {
+    console.error('cloudSync error:', err);
+    updateCloudStatus('동기화 실패');
+    showToast('☁️ 동기화 실패: ' + err.message);
+  } finally {
+    _cloudSyncing = false;
+    if (btn) btn.classList.remove('syncing');
+  }
+}
+
+// 자동 동기화: 페이지 로드 시 + 5분마다
+function initCloudSync() {
+  if (!CLOUD_SYNC_URL) {
+    updateCloudStatus('☁️ 클라우드 미연결');
+    return;
+  }
+  // 로드 후 2초 뒤 첫 동기화
+  setTimeout(() => cloudSync(), 2000);
+  // 5분마다 자동 동기화
+  setInterval(() => cloudSync(), 5 * 60 * 1000);
+}
+
+// ═══════ SYNC: 내보내기 / 가져오기 ═══════
+function showToast(msg) {
+  const el = document.getElementById('syncToast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// 마지막으로 사용한 파일 핸들 (PC Chrome — 같은 위치에 반복 저장용)
+let _lastFileHandle = null;
+
+async function syncExport() {
+  const exportData = {
+    _format: 'dual_planner_sync',
+    _version: 2,
+    _exported: new Date().toISOString(),
+    _device: navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop',
+    mission: data.mission,
+    values: data.values,
+    goals: data.goals,
+    roles: data.roles,
+    weeklyGoals: data.weeklyGoals,
+    tasks: data.tasks,
+    engDB: engDB
+  };
+  const jsonStr = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([jsonStr], { type: 'application/json' });
+  const fileName = 'dual_planner_sync.json';
+
+  // 방법 1: PC Chrome — File System Access API (저장 위치 직접 선택)
+  if (window.showSaveFilePicker) {
+    try {
+      // 이전에 저장한 핸들이 있으면 바로 덮어쓰기
+      if (_lastFileHandle) {
+        try {
+          const writable = await _lastFileHandle.createWritable();
+          await writable.write(blob);
+          await writable.close();
+          showToast('동기화 저장 완료');
+          return;
+        } catch(e) { _lastFileHandle = null; }
+      }
+      const handle = await window.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      _lastFileHandle = handle;
+      showToast('저장 완료 — 다음부터 같은 위치에 자동 저장');
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+
+  // 방법 2: 모바일 — 안내 모달 + 파일에 저장
+  showSyncModal(blob, fileName);
+}
+
+function showSyncModal(blob, fileName) {
+  // 기존 모달 제거
+  const old = document.getElementById('syncModalOverlay');
+  if (old) old.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'syncModalOverlay';
+  overlay.className = 'sync-modal-overlay';
+  overlay.innerHTML = `
+    <div class="sync-modal">
+      <h3>📤 Dropbox에 저장하기</h3>
+      <div class="step"><span class="step-num">1</span><span>아래 <b>"파일에 저장"</b> 버튼을 누르세요</span></div>
+      <div class="step"><span class="step-num">2</span><span><b>"파일에 저장"</b>을 선택하세요</span></div>
+      <div class="step"><span class="step-num">3</span><span>위치: <b>Dropbox › 04_Diary</b> 폴더로 이동</span></div>
+      <div class="step"><span class="step-num">4</span><span>같은 이름 파일이 있으면 <b>"대치"</b> 선택</span></div>
+      <button class="sync-modal-btn primary" id="syncModalSaveBtn">📁 파일에 저장</button>
+      <button class="sync-modal-btn cancel" id="syncModalCancel">닫기</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  // 배경 탭 → 닫기
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.getElementById('syncModalCancel').addEventListener('click', function() { overlay.remove(); });
+
+  // 저장 버튼
+  document.getElementById('syncModalSaveBtn').addEventListener('click', async function() {
+    try {
+      const file = new File([blob], fileName, { type: 'application/json' });
+      // iOS: navigator.share로 "파일에 저장" 옵션 제공
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        overlay.remove();
+        showToast('저장 완료');
+        return;
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') { return; }
+    }
+    // 폴백: 일반 다운로드
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    overlay.remove();
+    showToast('다운로드됨 — 파일 앱에서 Dropbox로 이동해주세요');
+  });
+}
+
+function syncImport(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      // BOM(Byte Order Mark) 제거 — 모바일에서 파일 읽을 때 BOM 붙는 경우 있음
+      let raw = ev.target.result;
+      if (raw.charCodeAt(0) === 0xFEFF) raw = raw.slice(1);
+      raw = raw.trim();
+
+      const imported = JSON.parse(raw);
+
+      // Case 1: 플래너 동기화 파일 (dual_planner_sync)
+      if (imported._format === 'dual_planner_sync') {
+        ['mission','values','goals','roles','weeklyGoals','tasks'].forEach(k => {
+          // null/undefined 방어: 유효한 값만 덮어쓰기
+          if (imported[k] != null) { data[k] = imported[k]; save(k); }
+        });
+        // 배열 필수 필드 null 방어
+        if (!Array.isArray(data.roles)) data.roles = [];
+        if (!Array.isArray(data.weeklyGoals)) data.weeklyGoals = [];
+        if (!Array.isArray(data.tasks)) data.tasks = [];
+        if (!Array.isArray(data.values)) data.values = [];
+        if (!Array.isArray(data.goals)) data.goals = [];
+
+        if (imported.engDB && imported.engDB.sentences) { engDB = imported.engDB; saveEngDB(); }
+        try { renderAll(); } catch(renderErr) { console.error('renderAll error after import:', renderErr); }
+        const when = imported._exported ? ' — ' + new Date(imported._exported).toLocaleString('ko-KR') + ' 데이터' : '';
+        showToast('가져오기 완료' + when);
+        return;
+      }
+
+      // Case 2: english_db.json 직접 가져오기 (meta + sentences 구조)
+      if (imported.meta && imported.sentences && Array.isArray(imported.sentences)) {
+        // 기존 review 데이터 보존하면서 머지
+        const localMap = {};
+        engDB.sentences.forEach(s => { localMap[s.id] = s; });
+        imported.sentences.forEach(ss => {
+          if (localMap[ss.id] && localMap[ss.id].review) {
+            ss.review = localMap[ss.id].review;
+          }
+        });
+        engDB.meta = imported.meta;
+        engDB.sentences = imported.sentences;
+        saveEngDB();
+        if (typeof renderEnglishQuiz === 'function') renderEnglishQuiz();
+        showToast('영어 DB 가져오기 완료 — ' + imported.sentences.length + '문장');
+        return;
+      }
+
+      showToast('인식할 수 없는 파일 형식입니다 (플래너 동기화 또는 english_db.json 파일을 선택하세요)');
+    } catch(err) {
+      console.error('syncImport error:', err);
+      showToast('파일 읽기 실패: ' + err.message);
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+  e.target.value = ''; // 같은 파일 재선택 허용
+}
+
+function renderAll() {
+  const fns = [renderRoles, renderWeekly, renderDaily, renderMission, renderEnglishQuiz];
+  fns.forEach(fn => {
+    if (typeof fn === 'function') {
+      try { fn(); } catch(e) { console.error('renderAll —', fn.name, '오류:', e); }
+    }
+  });
+}
+
+// ═══════ TAB NAVIGATION ═══════
+let currentTab = 'pageWeekly';
+const pageTitles = {
+  pageEnglish: ['영어 퀴즈', '에빙하우스 간격 반복'],
+  pageWeekly: ['위클리 캠퍼스', '역할별 주간 목표'],
+  pageMemo: ['주간 메모', '이번 주 기록과 생각'],
+  pageRoles: ['역할 관리', '삶의 핵심 역할 정의'],
+  pageMission: ['DUAL Planner', '나의 사명과 가치']
+};
+
+function switchTab(el) {
+  const page = el.dataset.page;
+  currentTab = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(page).classList.add('active');
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('pageTitle').textContent = pageTitles[page][0];
+  document.getElementById('pageSub').textContent = pageTitles[page][1];
+
+  const fab = document.getElementById('mainFab');
+  const expFab = document.getElementById('exportFab');
+  fab.classList.toggle('visible', false);
+  expFab.classList.toggle('visible', false);
+
+  if (page === 'pageEnglish') renderEnglishQuiz();
+  if (page === 'pageWeekly') renderWeekly();
+  if (page === 'pageMemo') renderMemo();
+  if (page === 'pageMission') renderMission();
+  if (page === 'pageRoles') renderRoles();
+}
+
+// ═══════ MODAL HELPERS ═══════
+function openModal(id) { document.getElementById(id).classList.add('active'); document.body.style.overflow='hidden'; }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); document.body.style.overflow=''; }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', function(e) { if(e.target===this) closeModal(this.id); });
+});
+function escapeHtml(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// ═══════ MISSION ═══════
+let editingMissionField = 'mission';
+function renderMission() {
+  const fields = [
+    { key:'mission', el:'missionDisplay', empty:'사명을 정의해보세요. "나는 ___한 사람이다"' },
+    { key:'values', el:'valuesDisplay', empty:'핵심 가치를 적어보세요 (예: 사회적 책임, 성장, 신뢰)' },
+    { key:'goals', el:'goalsDisplay', empty:'장기 목표를 적어보세요' }
+  ];
+  fields.forEach(f => {
+    const el = document.getElementById(f.el);
+    if (data[f.key]) {
+      el.innerHTML = `<div class="mission-display">${escapeHtml(data[f.key])}</div>
+        <button class="mission-edit-btn" onclick="openMissionEdit('${f.key}')">수정</button>`;
+    } else {
+      el.innerHTML = `<div class="mission-empty">${f.empty}</div>
+        <button class="mission-edit-btn" onclick="openMissionEdit('${f.key}')">작성하기</button>`;
+    }
+  });
+}
+function openMissionEdit(field) {
+  editingMissionField = field;
+  const labels = { mission:'나의 사명', values:'핵심 가치', goals:'장기 목표' };
+  document.getElementById('missionModalTitle').textContent = labels[field] + ' 수정';
+  document.getElementById('missionFieldLabel').textContent = labels[field];
+  document.getElementById('missionInput').value = data[field] || '';
+  document.getElementById('missionInput').placeholder =
+    field === 'mission' ? '나는 어떤 사람이 되고 싶은가?' :
+    field === 'values' ? '사회적 책임, 성장, 신뢰, 창의...' : '3년 후, 5년 후 나의 모습은?';
+  openModal('missionModal');
+  setTimeout(() => document.getElementById('missionInput').focus(), 300);
+}
+function saveMissionField() {
+  data[editingMissionField] = document.getElementById('missionInput').value.trim();
+  save(editingMissionField);
+  closeModal('missionModal');
+  renderMission();
+}
+
+// ═══════ ROLES ═══════
+let editingRoleId = null;
+let selectedIcon = '🎓';
+
+function renderRoles() {
+  const el = document.getElementById('rolesList');
+  if (data.roles.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-light)"><div style="font-size:40px;margin-bottom:8px">👤</div><p>아직 역할이 없습니다.</p></div>';
+    return;
+  }
+  el.innerHTML = data.roles.map(r => `
+    <div class="role-card">
+      <div class="role-icon">${r.icon}</div>
+      <div class="role-info">
+        <div class="role-name">${escapeHtml(r.name)}</div>
+        ${r.desc ? `<div class="role-desc">${escapeHtml(r.desc)}</div>` : ''}
+      </div>
+      <div class="role-actions">
+        <button class="role-action-btn" onclick="openRoleModal('${r.id}')">✏️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openRoleModal(id) {
+  if (id) {
+    const role = data.roles.find(r => r.id === id);
+    if (!role) return;
+    editingRoleId = id;
+    selectedIcon = role.icon;
+    document.getElementById('roleModalTitle').textContent = '역할 수정';
+    document.getElementById('roleSubmitBtn').textContent = '수정하기';
+    document.getElementById('roleDeleteBtn').style.display = 'block';
+    document.getElementById('roleNameInput').value = role.name;
+    document.getElementById('roleDescInput').value = role.desc || '';
+  } else {
+    editingRoleId = null;
+    selectedIcon = '🎓';
+    document.getElementById('roleModalTitle').textContent = '역할 추가';
+    document.getElementById('roleSubmitBtn').textContent = '추가하기';
+    document.getElementById('roleDeleteBtn').style.display = 'none';
+    document.getElementById('roleNameInput').value = '';
+    document.getElementById('roleDescInput').value = '';
+  }
+  renderIconGrid();
+  openModal('roleModal');
+  setTimeout(() => document.getElementById('roleNameInput').focus(), 300);
+}
+
+function renderIconGrid() {
+  document.getElementById('iconGrid').innerHTML = ROLE_ICONS.map(ic =>
+    `<div class="icon-option ${ic===selectedIcon?'selected':''}" onclick="pickIcon('${ic}')">${ic}</div>`
+  ).join('');
+}
+function pickIcon(ic) { selectedIcon = ic; renderIconGrid(); }
+
+function saveRole() {
+  const name = document.getElementById('roleNameInput').value.trim();
+  if (!name) return;
+  const desc = document.getElementById('roleDescInput').value.trim();
+  if (editingRoleId) {
+    const r = data.roles.find(r => r.id === editingRoleId);
+    if (r) { r.name = name; r.desc = desc; r.icon = selectedIcon; }
+  } else {
+    data.roles.push({ id: Date.now().toString(), name, desc, icon: selectedIcon });
+  }
+  save('roles');
+  closeModal('roleModal');
+  renderRoles();
+}
+
+function deleteRole() {
+  if (editingRoleId && confirm('이 역할을 삭제하시겠습니까?')) {
+    data.roles = data.roles.filter(r => r.id !== editingRoleId);
+    save('roles');
+    closeModal('roleModal');
+    renderRoles();
+  }
+}
+
+// ═══════ WEEKLY CAMPUS ═══════
+let currentWeekStart = getWeekStart(new Date());
+let addingGoalRoleId = null;
+
+function getWeekStart(d) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Monday start
+  date.setDate(date.getDate() + diff);
+  date.setHours(0,0,0,0);
+  return date;
+}
+
+function getWeekKey(d) {
+  const y = d.getFullYear();
+  const start = new Date(y, 0, 1);
+  const diff = (d - start + (start.getTimezoneOffset() - d.getTimezoneOffset()) * 60000) / 86400000;
+  const weekNum = Math.ceil((diff + start.getDay() + 1) / 7);
+  return `${y}-W${String(weekNum).padStart(2,'0')}`;
+}
+
+function formatWeekRange(start) {
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return `${start.getMonth()+1}/${start.getDate()} ~ ${end.getMonth()+1}/${end.getDate()}`;
+}
+
+function changeWeek(delta) {
+  currentWeekStart.setDate(currentWeekStart.getDate() + delta * 7);
+  renderWeekly();
+}
+function goThisWeek() { currentWeekStart = getWeekStart(new Date()); renderWeekly(); }
+
+function renderWeekly() {
+  const weekKey = getWeekKey(currentWeekStart);
+  document.getElementById('weekLabel').textContent = `${weekKey}  ${formatWeekRange(currentWeekStart)}`;
+
+  const content = document.getElementById('weeklyContent');
+  if (data.roles.length === 0) {
+    content.innerHTML = '<div class="weekly-empty"><div class="icon">👤</div><p>먼저 "역할" 탭에서 역할을 추가해주세요.</p></div>';
+    return;
+  }
+
+  const weekGoals = data.weeklyGoals.filter(g => g.week === weekKey);
+
+  // 이전 주 미완료 목표 확인
+  const prevWeekStart = new Date(currentWeekStart);
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+  const prevWeekKey = getWeekKey(prevWeekStart);
+  const carryoverGoals = data.weeklyGoals.filter(g => g.week === prevWeekKey && !g.done);
+
+  let carryoverHtml = '';
+  if (carryoverGoals.length > 0) {
+    const items = carryoverGoals.map(g => {
+      const role = data.roles.find(r => r.id === g.roleId);
+      const roleName = role ? `${role.icon} ${role.name}` : '';
+      return `<div class="carryover-item"><span class="co-role">${roleName}</span> ${escapeHtml(g.title)}</div>`;
+    }).join('');
+    carryoverHtml = `
+      <div class="weekly-carryover">
+        <div class="carryover-header">→ 지난주 미완료 ${carryoverGoals.length}건</div>
+        ${items}
+        <button class="carryover-btn" onclick="carryoverWeeklyGoals()">이번 주로 이월하기</button>
+      </div>`;
+  }
+
+  const priorityOrder = {A:0, B:1, C:2};
+  content.innerHTML = carryoverHtml + data.roles.map(role => {
+    const roleGoals = weekGoals.filter(g => g.roleId === role.id)
+      .sort((a,b) => (priorityOrder[a.priority||'C']||2) - (priorityOrder[b.priority||'C']||2));
+    const doneCount = roleGoals.filter(g => g.done).length;
+    return `
+      <div class="weekly-role-section">
+        <div class="weekly-role-header">
+          <div class="weekly-role-icon">${role.icon}</div>
+          <div class="weekly-role-name">${escapeHtml(role.name)}</div>
+          <div class="weekly-goal-count">${doneCount}/${roleGoals.length}</div>
+        </div>
+        ${roleGoals.map(g => {
+          const p = g.priority || 'C';
+          const pClass = 'wg-p' + p.toLowerCase();
+          const pBadgeClass = p.toLowerCase();
+          let dlHtml = '';
+          if (g.deadlineDate && !g.done) {
+            const dayNames = ['일','월','화','수','목','금','토'];
+            const dlDate = new Date(g.deadlineDate + 'T23:59:59');
+            const now = new Date();
+            const hoursLeft = (dlDate - now) / 3600000;
+            let warnClass = '';
+            let warnText = dayNames[g.deadlineDay] + '요일까지';
+            if (hoursLeft < 0) { warnClass = 'warn-over'; warnText = Math.abs(Math.floor(hoursLeft/24)) + '일 초과'; }
+            else if (hoursLeft < 12) { warnClass = 'warn-now'; warnText = '오늘 마감!'; }
+            else if (hoursLeft < 36) { warnClass = 'warn-soon'; warnText = '내일까지'; }
+            dlHtml = '<span class="wg-deadline ' + warnClass + '">' + warnText + '</span>';
+          } else if (g.deadlineDate && g.done) {
+            dlHtml = '<span class="wg-deadline" style="color:var(--pc)">완료</span>';
+          }
+          return `
+          <div class="weekly-goal-card ${pClass}">
+            <div class="wg-check ${g.done?'done':''}" onclick="toggleWeeklyGoal('${g.id}')">${g.done?'✔':''}</div>
+            <span class="wg-priority-badge ${pBadgeClass}">${p}</span>
+            <div class="wg-title ${g.done?'done':''}">${escapeHtml(g.title)}</div>
+            ${dlHtml}
+            <button class="wg-delete" onclick="deleteWeeklyGoal('${g.id}')">×</button>
+          </div>`;
+        }).join('')}
+        <div class="add-weekly-goal" onclick="openWeeklyGoalModal('${role.id}','${escapeHtml(role.name)}')">
+          + ${escapeHtml(role.name)} 목표 추가
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function carryoverWeeklyGoals() {
+  const prevWeekStart = new Date(currentWeekStart);
+  prevWeekStart.setDate(prevWeekStart.getDate() - 7);
+  const prevWeekKey = getWeekKey(prevWeekStart);
+  const currentWeekKey = getWeekKey(currentWeekStart);
+  const carryovers = data.weeklyGoals.filter(g => g.week === prevWeekKey && !g.done);
+  carryovers.forEach(g => {
+    data.weeklyGoals.push({
+      id: Date.now().toString() + Math.random().toString(36).slice(2,6),
+      week: currentWeekKey,
+      roleId: g.roleId,
+      title: g.title,
+      priority: g.priority || 'C',
+      done: false,
+      deadlineDate: '', deadlineDay: null
+    });
+    // 원본에 이월 표시 + done 처리하여 중복 이월 방지
+    g.note = (g.note || '') + ' → ' + currentWeekKey + '로 이월';
+    g.done = true;
+  });
+  save('weeklyGoals');
+  renderWeekly();
+}
+
+let selectedWgPriority = 'C';
+function selectWgPriority(p) {
+  selectedWgPriority = p;
+  document.querySelectorAll('#weeklyGoalModal .priority-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.p === p);
+  });
+}
+
+function openWeeklyGoalModal(roleId, roleName) {
+  addingGoalRoleId = roleId;
+  document.getElementById('wgRoleLabel').textContent = roleName + ' — 주간 목표';
+  document.getElementById('wgInput').value = '';
+  selectWgPriority('C');
+  openModal('weeklyGoalModal');
+  setTimeout(() => document.getElementById('wgInput').focus(), 300);
+}
+
+function saveWeeklyGoal() {
+  const title = document.getElementById('wgInput').value.trim();
+  if (!title) return;
+  const deadlineDay = document.getElementById('wgDeadlineDay').value;
+  const goal = {
+    id: Date.now().toString(),
+    week: getWeekKey(currentWeekStart),
+    roleId: addingGoalRoleId,
+    title, done: false,
+    priority: selectedWgPriority || 'C'
+  };
+  if (deadlineDay !== '') {
+    const dl = new Date(currentWeekStart);
+    const dayOffset = parseInt(deadlineDay) === 0 ? 6 : parseInt(deadlineDay) - 1;
+    dl.setDate(dl.getDate() + dayOffset);
+    goal.deadlineDate = formatDate(dl);
+    goal.deadlineDay = parseInt(deadlineDay);
+  }
+  data.weeklyGoals.push(goal);
+  save('weeklyGoals');
+  closeModal('weeklyGoalModal');
+  renderWeekly();
+}
+
+function toggleWeeklyGoal(id) {
+  const g = data.weeklyGoals.find(g => g.id === id);
+  if (g) { g.done = !g.done; save('weeklyGoals'); renderWeekly(); }
+}
+
+function deleteWeeklyGoal(id) {
+  data.weeklyGoals = data.weeklyGoals.filter(g => g.id !== id);
+  save('weeklyGoals');
+  renderWeekly();
+}
+
+// ═══════ DAILY PLANNER ═══════
+let currentDate = new Date();
+let selectedPriority = 'A';
+let editingTaskId = null;
+let statusTaskId = null;
+
+function formatDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function formatDateKR(d) {
+  const days = ['일','월','화','수','목','금','토'];
+  return `${d.getMonth()+1}월 ${d.getDate()}일 (${days[d.getDay()]})`;
+}
+function changeDate(delta) { currentDate.setDate(currentDate.getDate()+delta); renderDaily(); }
+function goToday() { currentDate = new Date(); renderDaily(); }
+function showDatePicker() {
+  const p = document.getElementById('hiddenDatePicker');
+  p.value = formatDate(currentDate); p.style.pointerEvents='all';
+  p.showPicker ? p.showPicker() : p.click();
+  setTimeout(()=>{p.style.pointerEvents='none';},100);
+}
+function pickDate(v) { if(v){const p=v.split('-');currentDate=new Date(p[0],p[1]-1,p[2]);renderDaily();} }
+
+function selectPriority(p) {
+  selectedPriority = p;
+  document.querySelectorAll('#addModal .priority-option').forEach(el => {
+    el.classList.toggle('selected', el.dataset.p === p);
+  });
+}
+
+function getNextNumber(date, priority) {
+  return data.tasks.filter(t => t.date === date && t.priority === priority).length + 1;
+}
+
+function handleFab() { openAddTaskModal(); }
+
+function populateRoleSelect() {
+  const sel = document.getElementById('taskRoleInput');
+  sel.innerHTML = '<option value="">-- 역할 선택 --</option>' +
+    data.roles.map(r => `<option value="${r.id}">${r.icon} ${escapeHtml(r.name)}</option>`).join('');
+}
+
+function openAddTaskModal() {
+  editingTaskId = null;
+  document.getElementById('taskModalTitle').textContent = '할 일 추가';
+  document.getElementById('taskSubmitBtn').textContent = '추가하기';
+  document.getElementById('taskDeleteBtn').style.display = 'none';
+  document.getElementById('taskInput').value = '';
+  document.getElementById('noteInput').value = '';
+  populateRoleSelect();
+  selectPriority('A');
+  openModal('addModal');
+  setTimeout(() => document.getElementById('taskInput').focus(), 300);
+}
+
+function openEditTaskModal(id) {
+  const task = data.tasks.find(t => t.id === id);
+  if (!task) return;
+  editingTaskId = id;
+  document.getElementById('taskModalTitle').textContent = '할 일 수정';
+  document.getElementById('taskSubmitBtn').textContent = '수정하기';
+  document.getElementById('taskDeleteBtn').style.display = 'block';
+  document.getElementById('taskInput').value = task.title;
+  document.getElementById('noteInput').value = task.note || '';
+  document.getElementById('taskDeadlineInput').value = task.deadline || '';
+  populateRoleSelect();
+  document.getElementById('taskRoleInput').value = task.roleId || '';
+  selectPriority(task.priority);
+  openModal('addModal');
+}
+
+function saveTask() {
+  const title = document.getElementById('taskInput').value.trim();
+  if (!title) { document.getElementById('taskInput').focus(); return; }
+  const dateStr = formatDate(currentDate);
+  const roleId = document.getElementById('taskRoleInput').value;
+  const note = document.getElementById('noteInput').value.trim();
+
+  const deadline = document.getElementById('taskDeadlineInput').value;
+  if (editingTaskId) {
+    const t = data.tasks.find(t => t.id === editingTaskId);
+    if (t) { t.title=title; t.priority=selectedPriority; t.roleId=roleId; t.note=note; t.deadline=deadline||''; }
+  } else {
+    data.tasks.push({
+      id: Date.now().toString(), date: dateStr, priority: selectedPriority,
+      number: getNextNumber(dateStr, selectedPriority),
+      title, roleId, status: 'pending', note, deadline: deadline||'',
+      created: new Date().toISOString()
+    });
+  }
+  save('tasks'); closeModal('addModal'); renderDaily();
+}
+
+function deleteTask() {
+  if (editingTaskId && confirm('삭제하시겠습니까?')) {
+    data.tasks = data.tasks.filter(t => t.id !== editingTaskId);
+    save('tasks'); closeModal('addModal'); renderDaily();
+  }
+}
+
+function openStatusModal(id) { statusTaskId = id; openModal('statusModal'); }
+
+function setStatus(status) {
+  const task = data.tasks.find(t => t.id === statusTaskId);
+  if (task) {
+    task.status = status;
+    if (status === 'forwarded') {
+      const next = new Date(currentDate); next.setDate(next.getDate()+1);
+      const nextStr = formatDate(next);
+      data.tasks.push({
+        id: Date.now().toString(), date: nextStr, priority: task.priority,
+        number: getNextNumber(nextStr, task.priority),
+        title: task.title, roleId: task.roleId, status: 'pending',
+        note: `${formatDate(currentDate)}에서 이월`, created: new Date().toISOString()
+      });
+      task.note = (task.note ? task.note+' | ' : '') + `→ ${nextStr}로 이월`;
+    }
+    save('tasks');
+  }
+  closeModal('statusModal'); renderDaily();
+}
+
+function getRoleName(roleId) {
+  const r = data.roles.find(r => r.id === roleId);
+  return r ? `${r.icon} ${r.name}` : '';
+}
+
+// ═══════ DAILY CARRYOVER ═══════
+function getPrevDates(dateStr, maxDays) {
+  // dateStr 이전 maxDays일간의 날짜 목록 반환
+  const dates = [];
+  const d = new Date(dateStr + 'T00:00:00');
+  for (let i = 1; i <= maxDays; i++) {
+    const prev = new Date(d);
+    prev.setDate(prev.getDate() - i);
+    dates.push(formatDate(prev));
+  }
+  return dates;
+}
+
+function renderDailyCarryover(todayStr) {
+  const container = document.getElementById('dailyCarryoverContainer');
+  // 최근 7일 이내의 미완료(pending) 태스크 검색
+  const prevDates = getPrevDates(todayStr, 7);
+  const pendingTasks = data.tasks.filter(t =>
+    prevDates.includes(t.date) && t.status === 'pending'
+  );
+
+  if (pendingTasks.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const items = pendingTasks.map(t => {
+    const pClass = t.priority === 'A' ? 'pa' : t.priority === 'B' ? 'pb' : 'pc';
+    const role = getRoleName(t.roleId);
+    return `<div class="co-task">
+      <span class="co-priority ${pClass}">${t.priority}</span>
+      ${role ? '<span style="font-size:11px;color:var(--text-light)">'+role+'</span>' : ''}
+      <span>${escapeHtml(t.title)}</span>
+      <span style="font-size:11px;color:var(--text-light);margin-left:auto">${t.date.slice(5)}</span>
+    </div>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="daily-carryover">
+      <div class="carryover-header">→ 미완료 ${pendingTasks.length}건 (최근 7일)</div>
+      ${items}
+      <button class="carryover-btn" onclick="carryoverDailyTasks()">오늘로 이월하기</button>
+    </div>`;
+}
+
+function carryoverDailyTasks() {
+  const todayStr = formatDate(currentDate);
+  const prevDates = getPrevDates(todayStr, 7);
+  const pendingTasks = data.tasks.filter(t =>
+    prevDates.includes(t.date) && t.status === 'pending'
+  );
+
+  pendingTasks.forEach(t => {
+    // 새 태스크 생성 (오늘 날짜)
+    data.tasks.push({
+      id: Date.now().toString() + Math.random().toString(36).slice(2,6),
+      date: todayStr,
+      priority: t.priority,
+      number: getNextNumber(todayStr, t.priority),
+      title: t.title,
+      roleId: t.roleId,
+      status: 'pending',
+      note: `${t.date}에서 이월`,
+      created: new Date().toISOString()
+    });
+    // 원본에 이월 표시
+    t.status = 'forwarded';
+    t.note = (t.note ? t.note + ' | ' : '') + `→ ${todayStr}로 이월`;
+  });
+
+  save('tasks');
+  renderDaily();
+  showToast(`${pendingTasks.length}건 오늘로 이월 완료`);
+}
+
+function renderWeeklySummary() {
+  const container = document.getElementById('weeklySummaryContainer');
+  const weekKey = getWeekKey(getWeekStart(currentDate));
+  const weekGoals = data.weeklyGoals.filter(g => g.week === weekKey);
+  if (weekGoals.length === 0 || data.roles.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  const remaining = weekGoals.filter(g => !g.done).length;
+  const total = weekGoals.length;
+  const doneAll = remaining === 0;
+  const isExpanded = container.querySelector('.weekly-summary.expanded') !== null;
+
+  let goalsHtml = '';
+  data.roles.forEach(role => {
+    const rg = weekGoals.filter(g => g.roleId === role.id);
+    if (rg.length === 0) return;
+    rg.forEach(g => {
+      let dlBadge = '';
+      if (g.deadlineDate && !g.done) {
+        const dayNames = ['일','월','화','수','목','금','토'];
+        const dlDate = new Date(g.deadlineDate + 'T23:59:59');
+        const now = new Date();
+        const hoursLeft = (dlDate - now) / 3600000;
+        let wc = '', wt = dayNames[g.deadlineDay] + '까지';
+        if (hoursLeft < 0) { wc='warn-over'; wt=Math.abs(Math.floor(hoursLeft/24))+'일 초과'; }
+        else if (hoursLeft < 12) { wc='warn-now'; wt='오늘 마감!'; }
+        else if (hoursLeft < 36) { wc='warn-soon'; wt='내일까지'; }
+        dlBadge = `<span class="wg-deadline ${wc}">${wt}</span>`;
+      }
+      goalsHtml += `<div class="ws-goal-item">
+        <div class="ws-goal-check ${g.done?'done':''}" onclick="toggleWeeklyGoalFromDaily('${g.id}')">${g.done?'✔':''}</div>
+        <span class="ws-goal-role">${role.icon} ${escapeHtml(role.name)}</span>
+        <div class="ws-goal-text ${g.done?'done':''}">${escapeHtml(g.title)}</div>
+        ${dlBadge}
+      </div>`;
+    });
+  });
+
+  container.innerHTML = `
+    <div class="weekly-summary ${isExpanded?'expanded':''}">
+      <button class="weekly-summary-header" onclick="this.parentElement.classList.toggle('expanded')">
+        <span class="ws-icon">📅</span>
+        <span class="ws-title">이번 주 목표</span>
+        <span class="ws-count ${doneAll?'all-done':'has-remaining'}">${doneAll?'모두 완료!':remaining+'개 남음'}</span>
+        <span class="ws-arrow">▼</span>
+      </button>
+      <div class="weekly-summary-body">${goalsHtml}</div>
+    </div>`;
+}
+
+function toggleWeeklyGoalFromDaily(id) {
+  const g = data.weeklyGoals.find(g => g.id === id);
+  if (g) { g.done = !g.done; save('weeklyGoals'); renderDaily(); }
+}
+
+function renderDaily() {
+  const dateStr = formatDate(currentDate);
+  document.getElementById('currentDate').textContent = formatDateKR(currentDate);
+  const dayTasks = data.tasks.filter(t => t.date === dateStr);
+
+  const total=dayTasks.length, done=dayTasks.filter(t=>t.status==='done').length,
+    pending=dayTasks.filter(t=>t.status==='pending').length,
+    forwarded=dayTasks.filter(t=>t.status==='forwarded').length;
+
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat-chip" style="color:var(--primary)">전체 ${total}</div>
+    <div class="stat-chip" style="color:var(--pc)">완료 ${done}</div>
+    <div class="stat-chip" style="color:var(--pb)">대기 ${pending}</div>
+    <div class="stat-chip" style="color:var(--pa)">이월 ${forwarded}</div>
+    <div class="stat-chip" style="color:var(--primary)">${total?Math.round(done/total*100):0}%</div>`;
+
+  // 위클리 목표 요약
+  renderWeeklySummary();
+
+  // 데일리 이월 배너 — 전날까지의 미완료(pending) 태스크 감지
+  renderDailyCarryover(dateStr);
+
+  const list = document.getElementById('taskList');
+  if (dayTasks.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="icon">📝</div><p>오늘 등록된 할 일이 없습니다.</p><p style="margin-top:8px;font-size:13px">+ 버튼을 눌러 추가하세요</p></div>';
+    return;
+  }
+
+  let html = '';
+  ['A','B','C'].forEach(p => {
+    const pTasks = dayTasks.filter(t=>t.priority===p).sort((a,b)=>a.number-b.number);
+    if (!pTasks.length) return;
+    const pLabel = p==='A'?'긴급 + 중요':p==='B'?'중요':'하면 좋은 일';
+    html += `<div class="priority-group"><div class="priority-label ${p.toLowerCase()}">${p} — ${pLabel}</div>`;
+    pTasks.forEach(t => {
+      const si = t.status==='done'?'✔':t.status==='forwarded'?'→':t.status==='cancelled'?'✖':'';
+      const sc = t.status==='done'?'done':t.status==='forwarded'?'forwarded':t.status==='cancelled'?'cancelled':'';
+      const roleName = getRoleName(t.roleId);
+      let dlHtml = '';
+      if (t.deadline && t.status === 'pending') {
+        const now = new Date();
+        const [dh, dm] = t.deadline.split(':').map(Number);
+        const dlTime = new Date(currentDate);
+        dlTime.setHours(dh, dm, 0, 0);
+        const minsLeft = (dlTime - now) / 60000;
+        let warnClass = '', warnText = t.deadline.replace(/^0/,'');
+        if (t.date === formatDate(now)) {
+          if (minsLeft < -1) { warnClass='warn-over'; const oh=Math.floor(Math.abs(minsLeft)/60); warnText=oh>0?oh+'시간 초과':Math.abs(Math.floor(minsLeft))+'분 초과'; }
+          else if (minsLeft < 30) { warnClass='warn-now'; warnText='지금 마감!'; }
+          else if (minsLeft < 120) { warnClass='warn-soon'; warnText=Math.floor(minsLeft/60)+'시간 '+Math.floor(minsLeft%60)+'분 남음'; }
+          else { warnText = t.deadline.replace(/^0/,'') + '까지'; }
+        } else {
+          warnText = t.deadline.replace(/^0/,'') + '까지';
+        }
+        dlHtml = `<span class="task-deadline ${warnClass}">${warnText}</span>`;
+      } else if (t.deadline && t.status === 'done') {
+        dlHtml = `<span class="task-deadline" style="color:var(--pc)">완료</span>`;
+      }
+      html += `<div class="task-card priority-${p.toLowerCase()} status-${t.status}">
+        <div class="task-check ${sc}" onclick="openStatusModal('${t.id}')">${si}</div>
+        <div class="task-content" onclick="openEditTaskModal('${t.id}')">
+          <div class="task-title">${p}${t.number}. ${escapeHtml(t.title)}</div>
+          <div class="task-meta">
+            ${roleName ? `<span class="task-tag">${roleName}</span>` : ''}
+            ${dlHtml}
+          </div>
+          ${t.note?`<div class="task-note">${escapeHtml(t.note)}</div>`:''}
+        </div></div>`;
+    });
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+// ═══════ EXPORT ═══════
+function openExportModal() {
+  const dateStr = formatDate(new Date());
+
+  let text = `[DUAL_PLANNER_START]\n`;
+  text += `📅 ${formatDateKR(new Date())} (${dateStr})\n━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  if (data.mission) text += `🧭 사명: ${data.mission}\n`;
+  if (data.values) text += `💎 핵심가치: ${data.values}\n`;
+  if (data.goals) text += `🎯 장기목표: ${data.goals}\n`;
+  if (data.mission || data.values || data.goals) text += '\n';
+
+  // 주간 목표
+  const weekKey = getWeekKey(getWeekStart(currentDate));
+  const weekGoals = data.weeklyGoals.filter(g => g.week === weekKey);
+  const pOrder = {A:0,B:1,C:2};
+  if (weekGoals.length > 0) {
+    text += `📆 이번 주 목표 (${weekKey})\n`;
+    data.roles.forEach(role => {
+      const rg = weekGoals.filter(g => g.roleId === role.id).sort((a,b) => (pOrder[a.priority||'C']||2) - (pOrder[b.priority||'C']||2));
+      if (rg.length > 0) {
+        text += `  ${role.icon} ${role.name}:\n`;
+        rg.forEach(g => { text += `    ${g.done?'✔':'☐'} [${g.priority||'C'}] ${g.title}\n`; });
+      }
+    });
+    text += '\n';
+  }
+
+  // 주간 메모
+  loadMemos();
+  const memo = memos[weekKey];
+  if (memo && memo.text && memo.text.trim()) {
+    text += `📝 주간 메모\n${memo.text.trim()}\n\n`;
+  }
+
+  const done = weekGoals.filter(g=>g.done).length;
+  text += `━━━━━━━━━━━━━━━━━━━━━━\n주간 목표: ${weekGoals.length}건 | 완료: ${done}건 | 완료율: ${weekGoals.length?Math.round(done/weekGoals.length*100):0}%\n`;
+  text += `[DUAL_PLANNER_END]`;
+
+  document.getElementById('exportContent').textContent = text;
+  openModal('exportModal');
+}
+
+function copyExport() {
+  const text = document.getElementById('exportContent').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '복사 완료!'; setTimeout(()=>{btn.textContent='복사하기';},1500);
+  }).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '복사 완료!'; setTimeout(()=>{btn.textContent='복사하기';},1500);
+  });
+}
+
+// ═══════ MEMO ═══════
+const MEMO_KEY = 'fp_memos';
+let memos = {};
+let memoWeekStart = getWeekStart(new Date());
+let memoSaveTimer = null;
+
+function loadMemos() { try { const v = _lsGet(MEMO_KEY); if(v) memos = JSON.parse(v); } catch(e){} }
+function saveMemos() { _lsSet(MEMO_KEY, JSON.stringify(memos)); }
+
+function changeMemoWeek(delta) {
+  memoWeekStart.setDate(memoWeekStart.getDate() + delta * 7);
+  renderMemo();
+}
+function goMemoThisWeek() { memoWeekStart = getWeekStart(new Date()); renderMemo(); }
+
+function autoSaveMemo() {
+  if (memoSaveTimer) clearTimeout(memoSaveTimer);
+  memoSaveTimer = setTimeout(() => {
+    const weekKey = getWeekKey(memoWeekStart);
+    const text = document.getElementById('memoText').value;
+    memos[weekKey] = { text, updatedAt: new Date().toISOString() };
+    saveMemos();
+    const savedEl = document.getElementById('memoSavedAt');
+    if (savedEl) savedEl.textContent = '저장됨 · ' + new Date().toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
+  }, 500);
+}
+
+function renderMemo() {
+  loadMemos();
+  const weekKey = getWeekKey(memoWeekStart);
+  document.getElementById('memoWeekLabel').textContent = weekKey + '  ' + formatWeekRange(memoWeekStart);
+
+  // 위클리 목표 요약
+  const weekGoals = data.weeklyGoals.filter(g => g.week === weekKey);
+  const summaryEl = document.getElementById('memoWeeklySummary');
+  if (weekGoals.length > 0 && data.roles.length > 0) {
+    const pOrder = {A:0,B:1,C:2};
+    const sorted = [...weekGoals].sort((a,b) => (pOrder[a.priority||'C']||2) - (pOrder[b.priority||'C']||2));
+    let html = '<div class="memo-weekly-summary"><h4>📅 이번 주 목표</h4>';
+    sorted.forEach(g => {
+      const role = data.roles.find(r => r.id === g.roleId);
+      const rName = role ? role.icon + ' ' + role.name : '';
+      const mark = g.done ? '<span class="wg-done-mark">✔</span>' : '<span class="wg-pending-mark">☐</span>';
+      const p = g.priority || 'C';
+      html += '<div class="memo-wg-item">' + mark + ' <span class="wg-priority-badge ' + p.toLowerCase() + '">' + p + '</span> ' + escapeHtml(g.title) + ' <span style="font-size:11px;color:var(--text-light);margin-left:auto">' + rName + '</span></div>';
+    });
+    html += '</div>';
+    summaryEl.innerHTML = html;
+  } else {
+    summaryEl.innerHTML = '';
+  }
+
+  // 메모 텍스트 로드
+  const memo = memos[weekKey];
+  document.getElementById('memoText').value = memo ? memo.text : '';
+  const savedEl = document.getElementById('memoSavedAt');
+  if (memo && memo.updatedAt) {
+    const d = new Date(memo.updatedAt);
+    savedEl.textContent = '마지막 저장 · ' + d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit'});
+  } else {
+    savedEl.textContent = '';
+  }
+}
+
+// ═══════ DEADLINE TIMER ═══════
+setInterval(() => {
+  if (currentTab === 'pageWeekly') renderWeekly();
+}, 60000); // 1분마다 워닝 갱신
+
+// ═══════ ENGLISH QUIZ ═══════
+const ENG_KEY = 'fp_english_db';
+let engDB = { meta: {}, sentences: [] };
+let engQuiz = []; // 오늘 퀴즈 문제
+
+function loadEngDB() {
+  try {
+    const v = _lsGet(ENG_KEY);
+    if (v) engDB = JSON.parse(v);
+  } catch(e) {}
+}
+function saveEngDB() { _lsSet(ENG_KEY, JSON.stringify(engDB)); }
+function getTodayStr() { return formatDate(new Date()); }
+
+function selectQuizSentences() {
+  const today = getTodayStr();
+  const due = engDB.sentences.filter(s => s.review && s.review.next_review <= today);
+  due.sort((a,b) => a.review.next_review.localeCompare(b.review.next_review));
+  let selected = due.slice(0, 5);
+  if (selected.length < 5) {
+    const rest = engDB.sentences.filter(s => !selected.includes(s));
+    for (let i = selected.length; i < 5 && i < engDB.sentences.length; i++) {
+      const idx = Math.floor(Math.random() * rest.length);
+      selected.push(rest.splice(idx, 1)[0]);
+    }
+  }
+  // 퀴즈 타입 배정: A(한→영) 2개, B(상황→영어) 2개, C(영→한) 1개
+  // 비율 2:2:1, 셔플하여 순서 랜덤
+  const types = ['A','A','B','B','C'];
+  for (let i = types.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [types[i], types[j]] = [types[j], types[i]];
+  }
+  selected.forEach((s, i) => { s._quizType = types[i] || 'A'; });
+  return selected;
+}
+
+// 정답 비교: 소문자 변환, 구두점/공백 정리 후 비교 (영어용)
+function normalizeAnswer(s) {
+  return s.toLowerCase().trim().replace(/[.,!?;:'"]/g, '').replace(/\s+/g, ' ');
+}
+// 한국어 정규화: 공백/구두점/괄호 내용 제거
+function normalizeKorean(s) {
+  return s.trim().replace(/\(.*?\)/g, '').replace(/[.,!?;:'"~\/]/g, '').replace(/\s+/g, ' ').trim();
+}
+// 불용어 (채점 시 무시하는 단어)
+const _STOP = new Set(['a','an','the','it','is','am','are','to','of','in','on','at','for','that','this','do','does','i','my','me','we','our','you','your','so']);
+
+// 동의어 그룹 — 같은 그룹 내 단어는 서로 같은 것으로 인정
+const _SYNONYMS = [
+  ['get','got','buy','bought','bring','brought','grab','grabbed'],
+  ['gonna','going'],
+  ['want','wanna'],
+  ['cant','cannot','couldnt'],
+  ['dont','do not','doesnt'],
+  ['im','i am'],
+  ['youre','you are'],
+  ['theyre','they are'],
+  ['weve','we have'],
+  ['ive','i have'],
+  ['thats','that is'],
+  ['its','it is'],
+  ['hes','he is'],
+  ['shes','she is'],
+  ['lets','let us'],
+  ['kind of','kinda'],
+  ['sort of','sorta'],
+  ['really','very','so'],
+  ['big','large','huge'],
+  ['small','little','tiny'],
+  ['happy','glad','pleased'],
+  ['sad','unhappy','upset'],
+  ['nice','good','great','fine'],
+  ['bad','terrible','awful'],
+  ['like','love','enjoy'],
+  ['begin','start'],
+  ['end','finish','stop'],
+  ['fast','quick','rapid'],
+  ['slow','slowly'],
+  ['look','see','watch'],
+  ['talk','speak','say','tell'],
+];
+const _SYN_MAP = {};
+_SYNONYMS.forEach(group => {
+  group.forEach(w => { _SYN_MAP[w] = group[0]; }); // 대표어로 정규화
+});
+function synNorm(word) { return _SYN_MAP[word] || word; }
+
+// 레벤슈타인 거리 (오타 허용용)
+function _levDist(a, b) {
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  // 길이 차이 2 이상이면 바로 리턴 (성능)
+  if (Math.abs(a.length - b.length) > 2) return Math.abs(a.length - b.length);
+  const m = [];
+  for (let i = 0; i <= b.length; i++) m[i] = [i];
+  for (let j = 0; j <= a.length; j++) m[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      m[i][j] = b[i-1] === a[j-1] ? m[i-1][j-1] : Math.min(m[i-1][j-1]+1, m[i][j-1]+1, m[i-1][j]+1);
+    }
+  }
+  return m[b.length][a.length];
+}
+// 두 단어가 '거의 같은지' 판단 (동의어 + 오타 허용)
+function _wordMatch(a, b) {
+  if (a === b) return true;
+  if (synNorm(a) === synNorm(b)) return true;
+  // 4글자 이상인 경우 1글자 오타 허용
+  if (a.length >= 4 && b.length >= 4 && _levDist(a, b) <= 1) return true;
+  return false;
+}
+
+// 영어 정답 비교 (Type A, B) — 너그러운 채점
+function checkAnswer(typed, correct) {
+  const t = normalizeAnswer(typed);
+  const c = normalizeAnswer(correct);
+  if (t === c) return 'correct';
+  // 슬래시로 나뉜 복수 정답 (예: "I can't eat ~ / I am allergic to ~")
+  const alts = correct.split('/').map(a => normalizeAnswer(a.replace(/~/g,'').trim()));
+  if (alts.some(a => {
+    if (t === a) return true;
+    // includes는 입력이 정답 길이의 60% 이상일 때만 허용 (너무 짧은 입력 방지)
+    if (a.length >= 3 && t.length >= Math.max(3, a.length * 0.6) && a.includes(t)) return true;
+    if (t.length >= 3 && a.length >= Math.max(3, t.length * 0.6) && t.includes(a)) return true;
+    return false;
+  })) return 'correct';
+
+  // 핵심 단어 비교 (불용어 제외, 동의어+오타 허용)
+  const tWords = t.split(' ').filter(Boolean);
+  const cWords = c.split(' ').filter(Boolean);
+  const tKey = tWords.filter(w => !_STOP.has(w));
+  const cKey = cWords.filter(w => !_STOP.has(w));
+
+  // 핵심 단어 70% 이상 일치 + 최소 2개 매칭 → correct (동의어+오타 허용)
+  if (cKey.length > 0) {
+    const keyMatch = cKey.filter(cw => tKey.some(tw => _wordMatch(tw, cw))).length;
+    if (keyMatch >= Math.min(2, cKey.length) && keyMatch / cKey.length >= 0.7) return 'correct';
+  }
+  // 전체 단어 40% 이상 일치 → close (동의어+오타 허용)
+  const allMatch = cWords.filter(cw => tWords.some(tw => _wordMatch(tw, cw))).length;
+  if (cWords.length > 0 && allMatch / cWords.length >= 0.4) return 'close';
+  return 'wrong';
+}
+// 한국어 핵심 키워드 추출 (조사/어미 제거, 어근만 남김)
+const _KO_STOP = new Set(['나','너','저','우리','그','이','저','것','거','좀','야','아','고','해','한','된','그냥','진짜','너무','아주','매우','정말','막','뭐','왜']);
+function _koKeywords(s) {
+  let n = s.replace(/[.,!?~\/()'"]/g, '').replace(/\s+/g, ' ').trim();
+  let words = n.split(' ').filter(Boolean);
+  const suffixes = /(?:은|는|이|가|을|를|에|의|와|과|도|만|로|으로|에서|까지|부터|하고|해서|해도|하면|했다|한다|하는|했어|해요|할|합니다|겠다|거야|잖아|네요|이야|이다|인데|라고|다고|고요|어요|아요|었다|ㄴ데)$/;
+  words = words.map(w => {
+    if (w.length <= 1) return w;
+    const stripped = w.replace(suffixes, '');
+    return stripped.length >= 1 ? stripped : w;
+  });
+  return words.filter(w => w.length >= 1 && !_KO_STOP.has(w));
+}
+const _KO_SYN = [
+  ['먹','먹자','먹고','먹다','먹어'],
+  ['싶','싶다','싶어','싶고'],
+  ['제발','부탁'],
+  ['결정','선택','고르','정하'],
+  ['이해','알','모르','알겠','모르겠'],
+  ['걱정','신경','고민','불안'],
+  ['괜찮','됐','좋'],
+  ['기뻐','기쁘','좋아','반가'],
+  ['아침','조식'],
+  ['계속','자꾸','또','더'],
+  ['배부르','배불','터질'],
+  ['더부룩','빵빵'],
+  ['기름','느끼'],
+];
+const _KO_SYN_MAP = {};
+_KO_SYN.forEach(g => { g.forEach(w => { _KO_SYN_MAP[w] = g[0]; }); });
+function _koWordMatch(a, b) {
+  if (a === b) return true;
+  if ((_KO_SYN_MAP[a]||a) === (_KO_SYN_MAP[b]||b)) return true;
+  if (a.length >= 2 && b.length >= 2 && (a.includes(b) || b.includes(a))) return true;
+  // 공통 어근 2글자 이상 → 같은 단어로 인정 (예: 고민된다 ↔ 고민돼 → '고민' 공통)
+  if (a.length >= 2 && b.length >= 2) {
+    const minLen = Math.min(a.length, b.length);
+    let common = 0;
+    for (let i = 0; i < minLen; i++) { if (a[i] === b[i]) common++; else break; }
+    if (common >= 2) return true;
+  }
+  return false;
+}
+
+// 한국어 정답 비교 (Type C: 영→한) — 너그러운 채점
+function checkKoreanAnswer(typed, correct) {
+  const t = normalizeKorean(typed);
+  const c = normalizeKorean(correct);
+  if (t === c) return 'correct';
+  const alts = correct.split('/').map(a => normalizeKorean(a));
+  if (alts.some(a => {
+    if (!a) return false;
+    if (t === a) return true;
+    // includes는 입력이 정답 길이의 60% 이상일 때만 허용
+    if (a.length >= 2 && t.length >= Math.max(2, a.length * 0.6) && a.includes(t)) return true;
+    if (t.length >= 2 && a.length >= Math.max(2, t.length * 0.6) && t.includes(a)) return true;
+    return false;
+  })) return 'correct';
+
+  // 키워드 기반 비교 (어근 추출 + 동의어)
+  const tKeys = _koKeywords(typed);
+  const cKeys = _koKeywords(correct);
+  if (cKeys.length > 0) {
+    const keyMatch = cKeys.filter(ck => tKeys.some(tk => _koWordMatch(tk, ck))).length;
+    if (keyMatch >= Math.min(2, cKeys.length) && keyMatch / cKeys.length >= 0.6) return 'correct';
+    if (keyMatch / cKeys.length >= 0.35) return 'close';
+  }
+
+  // 글자 겹침 폴백
+  const tChars = t.replace(/\s/g,'');
+  const cChars = c.replace(/\s/g,'');
+  if (cChars.length > 0) {
+    let overlap = 0;
+    for (const ch of cChars) { if (tChars.includes(ch)) overlap++; }
+    if (overlap / cChars.length >= 0.5) return 'close';
+  }
+  return 'wrong';
+}
+
+function renderEnglishQuiz() {
+  loadEngDB();
+  const area = document.getElementById('engQuizArea');
+  const statsEl = document.getElementById('engStats');
+
+  if (engDB.sentences.length === 0) {
+    statsEl.innerHTML = '';
+    area.innerHTML = '<div class="empty-state"><div class="icon">🇺🇸</div><p>영어 DB가 비어있습니다.<br>Cowork에서 문장을 추가하면 여기에 반영됩니다.</p></div>';
+    return;
+  }
+
+  const total = engDB.sentences.length;
+  const totalReviews = engDB.sentences.reduce((sum,s) => sum + (s.review?.review_count||0), 0);
+  const totalCorrect = engDB.sentences.reduce((sum,s) => sum + (s.review?.correct_count||0), 0);
+  const accuracy = totalReviews > 0 ? Math.round(totalCorrect/totalReviews*100) : 0;
+  const today = getTodayStr();
+  const dueCount = engDB.sentences.filter(s => s.review && s.review.next_review <= today).length;
+
+  statsEl.innerHTML = `
+    <div class="eng-stat">총 ${total}문장</div>
+    <div class="eng-stat">오늘 복습: ${dueCount}개</div>
+    <div class="eng-stat">정답률: ${accuracy}%</div>
+    <button class="eng-export-btn" onclick="exportEngReview()" title="복습 기록을 클립보드에 복사">📋 복습기록 내보내기</button>
+  `;
+
+  engQuiz = selectQuizSentences();
+  let html = '';
+  engQuiz.forEach((s, i) => {
+    const qt = s._quizType || 'A';
+    let typeLabel, qText, placeholder;
+    if (qt === 'A') {
+      typeLabel = '한→영';
+      qText = escapeHtml(s.korean);
+      placeholder = '영어로 입력하세요...';
+    } else if (qt === 'B') {
+      typeLabel = '힌트→영어';
+      qText = escapeHtml(s.korean) + (s.context ? '<div class="eng-hint">💡 ' + escapeHtml(s.context) + '</div>' : '');
+      placeholder = '영어로 입력하세요...';
+    } else {
+      typeLabel = '영→한';
+      qText = escapeHtml(s.english);
+      placeholder = '한국어 뜻을 입력하세요...';
+    }
+    html += `
+      <div class="eng-quiz-card" id="engQ${i}" data-sid="${s.id}" data-type="${qt}">
+        <div class="eng-q-num">Q${i+1} <span class="eng-q-type">${typeLabel}</span></div>
+        <div class="eng-q-text">${qText}</div>
+        <input type="text" class="eng-input" id="engInput${i}" placeholder="${placeholder}" autocomplete="off" autocapitalize="off">
+        <div class="eng-feedback" id="engFB${i}"></div>
+      </div>`;
+  });
+  html += `<button class="eng-reveal-btn" onclick="checkEngAnswers()">채점하기</button>`;
+  area.innerHTML = html;
+  // 첫 번째 입력에 포커스
+  setTimeout(() => { const el = document.getElementById('engInput0'); if(el) el.focus(); }, 200);
+  // Enter키로 다음 칸 이동
+  engQuiz.forEach((s, i) => {
+    document.getElementById('engInput'+i).addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const next = document.getElementById('engInput'+(i+1));
+        if (next) next.focus();
+        else checkEngAnswers();
+      }
+    });
+  });
+}
+
+// 미니 레슨 생성 — 핵심 표현 해설
+function _buildLesson(s, qt) {
+  const parts = [];
+  // 상황 설명
+  if (s.context) parts.push(`<div class="eng-lesson-ctx">💡 ${escapeHtml(s.context)}</div>`);
+  // 영→한이면 영어 핵심 표현, 한→영이면 한국어 뜻 보여주기
+  if (qt === 'C') {
+    // 영→한 문제: 영어 원문의 핵심 단어 강조
+    const keyWords = s.english.split(' ').filter(w => !_STOP.has(w.toLowerCase().replace(/[.,!?'"]/g,'')));
+    if (keyWords.length > 0) {
+      parts.push(`<div class="eng-lesson-key">🔑 핵심 표현: <strong>${escapeHtml(keyWords.join(', '))}</strong></div>`);
+    }
+    parts.push(`<div class="eng-lesson-pair">🇺🇸 ${escapeHtml(s.english)}<br>🇰🇷 ${escapeHtml(s.korean)}</div>`);
+  } else {
+    // 한→영 문제: 영어 문장 구조 분석
+    parts.push(`<div class="eng-lesson-pair">🇰🇷 ${escapeHtml(s.korean)}<br>🇺🇸 ${escapeHtml(s.english)}</div>`);
+  }
+  // 태그
+  if (s.tags && s.tags.length > 0) {
+    parts.push(`<div class="eng-lesson-tags">${s.tags.map(t=>'#'+t).join(' ')}</div>`);
+  }
+  return `<div class="eng-lesson">${parts.join('')}</div>`;
+}
+
+function checkEngAnswers() {
+  const today = getTodayStr();
+  let correctCount = 0, wrongList = [];
+
+  engQuiz.forEach((s, i) => {
+    const input = document.getElementById('engInput'+i);
+    const fb = document.getElementById('engFB'+i);
+    const card = document.getElementById('engQ'+i);
+    const typed = input.value.trim();
+    const qt = s._quizType || 'A';
+
+    // 타입별 정답 비교
+    let result;
+    if (qt === 'C') {
+      result = typed ? checkKoreanAnswer(typed, s.korean) : 'wrong';
+    } else {
+      result = typed ? checkAnswer(typed, s.english) : 'wrong';
+    }
+
+    // 타입별 정답 표시 텍스트
+    const correctText = (qt === 'C') ? s.korean : s.english;
+
+    input.disabled = true;
+    const sentence = engDB.sentences.find(ss => ss.id === s.id);
+    if (!sentence || !sentence.review) return;
+
+    sentence.review.review_count = (sentence.review.review_count||0) + 1;
+    sentence.review.last_reviewed = today;
+
+    // 핵심 표현 해설 생성
+    const lessonHtml = _buildLesson(s, qt);
+    const acceptBtn = `<button class="eng-accept-btn" onclick="acceptAsCorrect(${s.id},${i})">✅ 내 답도 맞아요</button>`;
+
+    if (result === 'correct') {
+      sentence.review.correct_count = (sentence.review.correct_count||0) + 1;
+      sentence.review.interval = Math.round(sentence.review.interval * sentence.review.ease);
+      sentence.review.ease = Math.min(3.0, sentence.review.ease + 0.1);
+      correctCount++;
+      card.classList.add('eng-correct');
+      fb.innerHTML = `<div class="eng-fb-correct">🟢 정답! <span class="eng-fb-answer">${escapeHtml(correctText)}</span></div>${lessonHtml}`;
+    } else if (result === 'close') {
+      sentence.review.interval = Math.max(1, Math.round(sentence.review.interval * 0.7));
+      card.classList.add('eng-close');
+      fb.innerHTML = `<div class="eng-fb-close">🟡 거의! 정답: <span class="eng-fb-answer">${escapeHtml(correctText)}</span></div>${lessonHtml}${acceptBtn}`;
+    } else {
+      sentence.review.interval = 1;
+      sentence.review.ease = Math.max(1.3, sentence.review.ease - 0.2);
+      wrongList.push(sentence);
+      card.classList.add('eng-wrong');
+      fb.innerHTML = `<div class="eng-fb-wrong">🔴 오답! 정답: <span class="eng-fb-answer">${escapeHtml(correctText)}</span></div>${lessonHtml}${acceptBtn}`;
+    }
+
+    const next = new Date(today);
+    next.setDate(next.getDate() + sentence.review.interval);
+    sentence.review.next_review = formatDate(next);
+    fb.style.display = 'block';
+  });
+
+  saveEngDB();
+  // correctCount를 전역에 저장 (내 답도 맞아요 버튼용)
+  window._engCorrectCount = correctCount;
+  window._engTotal = engQuiz.length;
+
+  // 채점 버튼 → 결과 요약 + 다시 풀기
+  const area = document.getElementById('engQuizArea');
+  // 기존 버튼 교체
+  const btns = area.querySelectorAll('.eng-reveal-btn');
+  btns.forEach(b => b.remove());
+  const summary = document.createElement('div');
+  summary.className = 'eng-result';
+  summary.innerHTML = `
+    <h3>${correctCount} / ${engQuiz.length} 정답</h3>
+    <p style="color:var(--text-light);font-size:14px;margin:4px 0">
+      ${correctCount === engQuiz.length ? '완벽합니다! 👏 다음 복습은 간격이 늘어납니다.' :
+        wrongList.length > 0 ? '틀린 문장은 내일 다시 나옵니다.' : ''}
+    </p>
+    <button class="eng-reveal-btn" style="margin-top:12px" onclick="renderEnglishQuiz()">다시 풀기</button>
+  `;
+  area.appendChild(summary);
+}
+
+// "내 답도 맞아요" — close/wrong → 정답으로 재처리
+function acceptAsCorrect(sentenceId, quizIdx) {
+  const sentence = engDB.sentences.find(s => s.id === sentenceId);
+  if (!sentence || !sentence.review) return;
+
+  // 스코어 보정: 정답 처리
+  sentence.review.correct_count = (sentence.review.correct_count||0) + 1;
+  sentence.review.interval = Math.round(sentence.review.interval * sentence.review.ease);
+  sentence.review.ease = Math.min(3.0, sentence.review.ease + 0.1);
+  const next = new Date();
+  next.setDate(next.getDate() + sentence.review.interval);
+  sentence.review.next_review = formatDate(next);
+  saveEngDB();
+
+  // UI 업데이트
+  const card = document.getElementById('engQ' + quizIdx);
+  if (card) {
+    card.classList.remove('eng-close', 'eng-wrong');
+    card.classList.add('eng-correct');
+  }
+  const fb = document.getElementById('engFB' + quizIdx);
+  if (fb) {
+    const qt = engQuiz[quizIdx]?._quizType || 'A';
+    const correctText = (qt === 'C') ? engQuiz[quizIdx].korean : engQuiz[quizIdx].english;
+    fb.innerHTML = `<div class="eng-fb-correct">🟢 정답 인정! <span class="eng-fb-answer">${escapeHtml(correctText)}</span></div>`;
+  }
+
+  // 점수 업데이트
+  if (window._engCorrectCount !== undefined) {
+    window._engCorrectCount++;
+    const resultEl = document.querySelector('.eng-result h3');
+    if (resultEl) resultEl.textContent = window._engCorrectCount + ' / ' + window._engTotal + ' 정답';
+  }
+}
+
+// Cowork에서 영어 DB를 가져오는 헬퍼 함수
+function importEngDB(jsonText) {
+  try {
+    const parsed = typeof jsonText === 'string' ? JSON.parse(jsonText) : jsonText;
+    engDB = parsed;
+    saveEngDB();
+    if (currentTab === 'pageEnglish') renderEnglishQuiz();
+    console.log('✅ 영어 DB 가져오기 완료! 총 ' + engDB.sentences.length + '문장');
+    return true;
+  } catch(e) { console.error('❌ JSON 파싱 실패:', e); return false; }
+}
+
+// 복습 기록 내보내기 — review 데이터만 추출하여 클립보드 복사
+function exportEngReview() {
+  loadEngDB();
+  const reviewData = engDB.sentences.map(s => ({
+    id: s.id,
+    english: s.english,
+    review: s.review || {}
+  }));
+  const summary = {
+    exported: new Date().toISOString().slice(0,19),
+    total: reviewData.length,
+    reviewed: reviewData.filter(r => (r.review.review_count||0) > 0).length,
+    reviews: reviewData
+  };
+  const json = JSON.stringify(summary, null, 2);
+  navigator.clipboard.writeText(json).then(() => {
+    alert('📋 복습 기록이 클립보드에 복사되었습니다!\n\nCowork에 붙여넣기하면 DB에 반영됩니다.\n\n복습한 문장: ' + summary.reviewed + '/' + summary.total + '개');
+  }).catch(() => {
+    // clipboard 실패 시 textarea로 폴백
+    const ta = document.createElement('textarea');
+    ta.value = json;
+    ta.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:80%;height:300px;z-index:9999;font-size:12px;';
+    document.body.appendChild(ta);
+    ta.select();
+    alert('클립보드 복사가 안 되는 환경입니다.\n아래 텍스트를 직접 복사해서 Cowork에 붙여넣기하세요.');
+  });
+}
+
+// 영어 DB 초기 데이터 (file:// 에서도 작동하도록 임베드)
+const ENG_SEED_DATA = {"meta": {"version": "1.0","description": "리얼클래스 영어 학습 문장 DB - 에빙하우스 망각곡선 기반 간격 반복","created": "2026-02-23","source": "리얼클래스"},"sentences": [{"id": 1,"english": "It's up to you.","korean": "너가 결정해.","context": "상대에게 선택권을 넘길 때. 가볍고 중립적인 뉘앙스.","source": "리얼클래스","tags": ["일상","의사결정"],"added": "2026-02-23","review": {"interval": 8,"ease": 2.7,"next_review": "2026-03-12","last_reviewed": "2026-03-04","review_count": 3,"correct_count": 2}},{"id": 2,"english": "It's your call.","korean": "너가 결정해. (= It's up to you와 거의 동의어)","context": "'call'을 결정이란 뜻으로 사용. It's up to you와 거의 같지만 약간 더 캐주얼.","source": "리얼클래스","tags": ["일상","의사결정"],"added": "2026-02-23","review": {"interval": 2,"ease": 2.4,"next_review": "2026-03-05","last_reviewed": "2026-03-03","review_count": 2,"correct_count": 1}},{"id": 3,"english": "It's on you.","korean": "너의 결정이니 너가 책임져.","context": "It's up to you와 비슷하지만, '책임'의 뉘앙스가 강함. 결과에 대한 책임까지 포함.","source": "리얼클래스","tags": ["일상","의사결정","뉘앙스차이"],"added": "2026-02-23","review": {"interval": 3,"ease": 2.6,"next_review": "2026-03-06","last_reviewed": "2026-03-03","review_count": 2,"correct_count": 1}},{"id": 4,"english": "Do you have any dietary restrictions?","korean": "식이 제한이 있으세요?","context": "식당에서 주문 전, 또는 누군가를 초대할 때 묻는 표현.","source": "리얼클래스","tags": ["식사","질문"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.4,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 1}},{"id": 5,"english": "I can't eat ~ / I am allergic to ~","korean": "~ 못 먹어요 / ~ 알레르기가 있어요","context": "dietary restrictions에 대한 대답. 'I can't eat gluten', 'I am allergic to peanuts' 등.","source": "리얼클래스","tags": ["식사","대답"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.4,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 1}},{"id": 6,"english": "I'm kind of craving something crispy.","korean": "바삭한 거 좀 땡긴다.","context": "지금 당장 강하게 땡길 때. 'kind of'로 약간 부드럽게 표현. craving = 강한 욕구.","source": "리얼클래스","tags": ["식사","욕구표현","뉘앙스차이"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.1,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 0}},{"id": 7,"english": "I crave something crispy.","korean": "바삭한 거 땡겨. (평소에)","context": "평소에 일반적으로 땡길 때. 진행형(I'm craving)은 '지금 당장', 단순현재(I crave)는 '평소'.","source": "리얼클래스","tags": ["식사","욕구표현","뉘앙스차이"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.1,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 0}},{"id": 8,"english": "I feel bloated.","korean": "더부룩해.","context": "과식 후 배가 빵빵하고 더부룩할 때. bloated = 부풀어 오른, 더부룩한.","source": "리얼클래스","tags": ["식사","컨디션"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.1,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 0}},{"id": 9,"english": "greasy food","korean": "기름진 음식","context": "느끼한/기름진 음식을 말할 때. 'The food was too greasy.'","source": "리얼클래스","tags": ["식사","단어"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.4,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 2,"correct_count": 1}},{"id": 10,"english": "I'm stuffed.","korean": "배 터질 것 같아. / 배불러 죽겠어.","context": "I'm full보다 훨씬 강한 표현. 진짜 많이 먹어서 더 못 먹을 때.","source": "리얼클래스","tags": ["식사","컨디션"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.1,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 0}},{"id": 11,"english": "What's the plan?","korean": "계획이 뭐야? / 어떻게 할 거야?","context": "모임이나 약속 전에 계획을 물어볼 때. 가볍고 자연스러운 표현.","source": "리얼클래스","tags": ["일상","질문"],"added": "2026-02-23","review": {"interval": 2,"ease": 2.2,"next_review": "2026-03-06","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 1}},{"id": 12,"english": "Do the right thing. Always do the right thing.","korean": "옳은 일을 해. 항상 옳은 일을 해.","context": "도덕적 조언이나 격려. 스파이크 리 감독의 영화 제목이기도 함.","source": "리얼클래스","tags": ["격언","조언"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.1,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 0}},{"id": 13,"english": "Don't ever do that again.","korean": "다시는 그러지 마.","context": "강한 경고. 'ever'가 들어가서 '절대로'의 강조 느낌.","source": "리얼클래스","tags": ["경고","감정표현"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 0}},{"id": 14,"english": "That was close.","korean": "아슬아슬했다. / 큰일 날 뻔했다.","context": "위험한 상황을 겨우 피했을 때. 안도감을 표현.","source": "리얼클래스","tags": ["감정표현","안도"],"added": "2026-02-23","review": {"interval": 1,"ease": 2.1,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 2,"correct_count": 0}},{"id": 15,"english": "How many flowers are you getting?","korean": "꽃 몇 개 살 거야?","context": "상대의 구매 계획을 물을 때. get = buy의 캐주얼한 표현.","source": "리얼클래스","tags": ["일상","쇼핑","질문"],"added": "2026-02-25","review": {"interval": 3,"ease": 2.6,"next_review": "2026-03-06","last_reviewed": "2026-03-03","review_count": 1,"correct_count": 1}},{"id": 16,"english": "You can't count love. So, I'm going to get 50 roses.","korean": "사랑은 셀 수 없잖아. 그래서 장미 50송이 살 거야.","context": "로맨틱하면서도 과장된 표현. count = 숫자로 세다/측정하다.","source": "리얼클래스","tags": ["감정표현","로맨스"],"added": "2026-02-25","review": {"interval": 3,"ease": 2.6,"next_review": "2026-03-06","last_reviewed": "2026-03-03","review_count": 1,"correct_count": 1}},{"id": 17,"english": "It's an art gallery. Not a flower shop.","korean": "여긴 미술관이야. 꽃집이 아니라.","context": "상대의 엉뚱한 행동에 핀잔줄 때. 유머러스한 반박.","source": "리얼클래스","tags": ["일상","유머","반박"],"added": "2026-02-25","review": {"interval": 3,"ease": 2.6,"next_review": "2026-03-06","last_reviewed": "2026-03-03","review_count": 1,"correct_count": 1}},{"id": 18,"english": "It's a way to add beauty to my love for him.","korean": "그에 대한 내 사랑에 아름다움을 더하는 방법이야.","context": "자기 행동을 시적으로 정당화할 때. a way to ~ = ~하는 방법.","source": "리얼클래스","tags": ["감정표현","로맨스"],"added": "2026-02-25","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 0}},{"id": 19,"english": "Come on, man. I just want to eat my breakfast.","korean": "야, 제발. 나 그냥 아침 먹고 싶다고.","context": "상대의 이야기에 지쳐서 거리두기할 때. Come on = 제발/그만 좀.","source": "리얼클래스","tags": ["일상","감정표현","짜증"],"added": "2026-02-25","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 0}},{"id": 20,"english": "You better not.","korean": "그러지 않는 게 좋을 걸.","context": "경고/만류할 때. You'd better not의 축약. 강한 권고 뉘앙스.","source": "리얼클래스","tags": ["일상","경고"],"added": "2026-02-25","review": {"interval": 2,"ease": 2.4,"next_review": "2026-03-06","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 1}},{"id": 21,"english": "We're gonna make viral videos so we can become internet famous!","korean": "바이럴 영상 만들어서 인터넷 유명인이 될 거야!","context": "미래 계획을 열정적으로 말할 때. gonna = going to. so we can = ~하기 위해.","source": "리얼클래스","tags": ["계획","소셜미디어"],"added": "2026-02-25","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 0}},{"id": 22,"english": "Would you look at that!","korean": "저것 좀 봐! / 세상에!","context": "놀랍거나 인상적인 것을 봤을 때 감탄. 수사적 질문(실제로 답 기대 X).","source": "리얼클래스","tags": ["감정표현","감탄"],"added": "2026-02-25","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 0}},{"id": 23,"english": "No sweat.","korean": "별거 아니야. / 신경 쓰지 마.","context": "상대가 고마워하거나 미안해할 때, '전혀 힘든 일 아니었어'라는 뜻. sweat(땀) = 수고.","source": "리얼클래스","tags": ["일상","리액션","감사응답"],"added": "2026-02-26","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 0}},{"id": 24,"english": "No sweat, my pleasure.","korean": "별거 아니야, 내가 좋아서 한 거야.","context": "No sweat에 my pleasure를 더해 더 정중하고 따뜻한 느낌. 도움 준 뒤 겸손하게.","source": "리얼클래스","tags": ["일상","리액션","감사응답"],"added": "2026-02-26","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 0}},{"id": 25,"english": "Don't sweat it.","korean": "걱정 마. / 신경 쓰지 마.","context": "상대가 걱정하거나 스트레스받을 때 안심시키는 표현. No sweat과 비슷하지만 '위로' 뉘앙스 강함.","source": "리얼클래스","tags": ["일상","위로","격려"],"added": "2026-02-26","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 0}},{"id": 26,"english": "They got nothing on us.","korean": "걔들은 우리한테 상대도 안 돼. / 우리한테 잡을 거 없어.","context": "자신감을 드러낼 때. 'got nothing on ~' = ~한테 비할 게 없다. 법적 맥락에서는 '증거 없다'.","source": "리얼클래스","tags": ["자신감","슬랭","뉘앙스차이"],"added": "2026-02-26","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-05","last_reviewed": "2026-03-04","review_count": 1,"correct_count": 0}},{"id": 27,"english": "I'm so glad you're into it!","korean": "네가 그걸 좋아한다니 정말 기뻐!","context": "상대가 무언가에 관심을 보일 때 기뻐하며 반응. 'be into ~' = ~에 빠져 있다, 관심 있다.","source": "리얼클래스","tags": ["감정표현","리액션","격려"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 0}},{"id": 28,"english": "I really don't have time for that sort of thing.","korean": "그런 거 할 시간이 진짜 없어.","context": "바빠서 거절할 때. 'that sort of thing' = 그런 종류의 것. 정중하지만 단호한 거절.","source": "리얼클래스","tags": ["일상","거절","시간관리"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 0}},{"id": 29,"english": "See you later.","korean": "나중에 봐. / 또 보자.","context": "가장 기본적이고 자연스러운 작별 인사. 실제로 나중에 볼 계획이 없어도 사용 가능.","source": "리얼클래스","tags": ["일상","인사"],"added": "2026-03-02","review": {"interval": 3,"ease": 2.6,"next_review": "2026-03-12","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 1}},{"id": 30,"english": "Ask away.","korean": "마음껏 물어봐. / 뭐든 물어봐.","context": "상대의 질문을 환영할 때. 'away'가 '마음껏, 거침없이'의 뉘앙스를 더함.","source": "리얼클래스","tags": ["일상","격려","대화"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 0}},{"id": 31,"english": "Get with it.","korean": "정신 차려. / 시대에 맞춰.","context": "뒤처진 사람에게 '적응하라'고 할 때. 상황에 따라 '정신 차려' 또는 '트렌드를 따라가' 뉘앙스.","source": "리얼클래스","tags": ["일상","충고","슬랭"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 0}},{"id": 32,"english": "Just try it.","korean": "그냥 해봐.","context": "망설이는 상대를 격려할 때. 간결하고 강한 동기부여 표현.","source": "리얼클래스","tags": ["격려","동기부여"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 0}},{"id": 33,"english": "I don't get it.","korean": "이해가 안 돼. / 모르겠어.","context": "뭔가 이해가 안 될 때. 'get' = understand. 가장 일상적인 '모르겠다' 표현.","source": "리얼클래스","tags": ["일상","이해","뉘앙스차이"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 0}},{"id": 34,"english": "I don't get the problems on the test.","korean": "시험 문제를 모르겠어.","context": "'get'이 understand 뜻일 때 목적어를 구체적으로 붙인 형태. I don't get it의 확장.","source": "리얼클래스","tags": ["일상","이해","뉘앙스차이"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 0}},{"id": 35,"english": "Here you go.","korean": "여기 있어. / 자, 받아.","context": "물건을 건네줄 때 쓰는 표현. 'Here it is'보다 캐주얼하고 친근함.","source": "리얼클래스","tags": ["일상","전달"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.3,"next_review": "2026-03-10","last_reviewed": "2026-03-09","review_count": 1,"correct_count": 0}},{"id": 36,"english": "There, there.","korean": "괜찮아, 괜찮아. / 됐어, 됐어.","context": "울거나 속상한 사람을 달래줄 때. 어깨를 토닥이며 하는 위로 표현.","source": "리얼클래스","tags": ["위로","감정표현"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-03","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 37,"english": "Oh, so torn.","korean": "아, 너무 고민돼. / 갈등된다.","context": "두 선택 사이에서 갈등할 때. torn = (마음이) 찢어진, 갈팡질팡하는.","source": "리얼클래스","tags": ["감정표현","고민"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-03","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 38,"english": "Keep them coming.","korean": "계속 줘. / 계속 가져와.","context": "좋은 것을 계속 달라는 뜻. 음식, 아이디어, 칭찬 등 다양한 상황에서 사용.","source": "리얼클래스","tags": ["일상","요청"],"added": "2026-03-02","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-03","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 39,"english": "Could I have one of those?","korean": "저것 하나 주시겠어요?","context": "식당이나 가게에서 메뉴/물건을 가리키며 주문할 때. 정중하고 자연스러운 요청 표현.","source": "리얼클래스","tags": ["식사","요청","주문"],"added": "2026-03-09","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-10","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 40,"english": "I'm kind of full.","korean": "좀 배부른 것 같아.","context": "'kind of'로 배부름을 부드럽게 표현. I'm full보다 덜 단정적이고 여지를 남김.","source": "리얼클래스","tags": ["식사","컨디션"],"added": "2026-03-09","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-10","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 41,"english": "You guys need a minute?","korean": "좀 더 시간 필요하세요?","context": "식당 직원이 손님에게, 또는 누군가에게 결정할 시간을 줄 때. 배려하는 표현.","source": "리얼클래스","tags": ["식사","배려","질문"],"added": "2026-03-09","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-10","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 42,"english": "Is everything alright?","korean": "다 괜찮으세요? / 문제없으세요?","context": "식당에서 직원이 확인할 때, 또는 상대의 상태를 걱정할 때. 다용도 안부 표현.","source": "리얼클래스","tags": ["일상","배려","질문"],"added": "2026-03-09","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-10","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 43,"english": "This restaurant is too happening.","korean": "이 레스토랑 너무 핫하다. / 인기 폭발이다.","context": "장소가 활기차고 인기 많을 때. happening = 핫한, 트렌디한. 슬랭 느낌.","source": "리얼클래스","tags": ["일상","슬랭","식사"],"added": "2026-03-09","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-10","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 44,"english": "Do you even know these people?","korean": "이 사람들 알기는 해?","context": "'even'이 의심/놀람을 강조. '도대체 알기는 하냐'는 뉘앙스. 살짝 도발적.","source": "리얼클래스","tags": ["일상","질문","뉘앙스차이"],"added": "2026-03-09","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-10","last_reviewed": null,"review_count": 0,"correct_count": 0}},{"id": 45,"english": "We're always here for you.","korean": "우리는 항상 네 편이야. / 항상 여기 있어.","context": "힘든 상황의 상대를 응원할 때. 든든한 지지와 연대를 표현하는 따뜻한 문장.","source": "리얼클래스","tags": ["위로","격려","감정표현"],"added": "2026-03-09","review": {"interval": 1,"ease": 2.5,"next_review": "2026-03-10","last_reviewed": null,"review_count": 0,"correct_count": 0}}]};
+
+// 영어 DB 동기화: ENG_SEED_DATA(Cowork이 관리)와 localStorage(플래너가 관리)를 머지
+// - 새 문장(SEED에만 있는 id) → localStorage에 추가
+// - 기존 문장 → localStorage의 review 데이터 유지 (학습 진도 보존)
+// - SEED에서 삭제된 문장 → localStorage에서도 제거
+function autoLoadEngDB() {
+  loadEngDB();
+  const seed = JSON.parse(JSON.stringify(ENG_SEED_DATA));
+  const seedIds = new Set(seed.sentences.map(s => s.id));
+  const localMap = {};
+  engDB.sentences.forEach(s => { localMap[s.id] = s; });
+
+  let added = 0, kept = 0, removed = 0;
+  const merged = [];
+
+  seed.sentences.forEach(ss => {
+    if (localMap[ss.id]) {
+      // 기존 문장: 콘텐츠는 SEED에서 가져오고, review는 localStorage 것 유지
+      const local = localMap[ss.id];
+      ss.review = local.review || ss.review;
+      merged.push(ss);
+      kept++;
+    } else {
+      // 새 문장: SEED 그대로 추가
+      merged.push(ss);
+      added++;
+    }
+  });
+
+  // SEED에서 삭제된 문장은 merged에 포함 안 됨
+  removed = engDB.sentences.filter(s => !seedIds.has(s.id)).length;
+
+  engDB.meta = seed.meta;
+  engDB.sentences = merged;
+  saveEngDB();
+
+  if (added > 0 || removed > 0) {
+    console.log(`✅ 영어 DB 동기화: +${added}개 추가, ${kept}개 유지, -${removed}개 제거 → 총 ${merged.length}문장`);
+  }
+}
+
+// ═══════ INIT ═══════
+load();
+loadMemos();
+autoLoadEngDB();
+renderMission();
+renderWeekly();
+renderRoles();
+document.getElementById('pageTitle').textContent = pageTitles['pageWeekly'][0];
+document.getElementById('pageSub').textContent = pageTitles['pageWeekly'][1];
+initCloudSync();
+</script>
+</body>
+</html>
