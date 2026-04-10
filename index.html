@@ -1156,12 +1156,13 @@ body {
         <input type="text" id="stockNameInput" placeholder="예: 삼성전자">
       </div>
       <div class="form-group">
-        <label>티커 심볼 (Stooq 형식)</label>
-        <input type="text" id="stockSymbolInput" placeholder="예: 005930.KR, aapl.us, ^kospi" style="font-family:monospace">
+        <label>티커 심볼 (Yahoo Finance 형식)</label>
+        <input type="text" id="stockSymbolInput" placeholder="예: 005930.KS, AAPL, ^KS11" style="font-family:monospace">
         <div style="font-size:11px;color:var(--text-light);margin-top:6px;line-height:1.5">
-          • 한국 주식: <code>005930.KR</code> (코드 6자리 + .KR)<br>
-          • 미국 주식: <code>aapl.us</code> (소문자 티커 + .us)<br>
-          • 지수: <code>^kospi</code>, <code>^ndq</code>, <code>^spx</code>
+          • 한국 주식: <code>005930.KS</code> (6자리 코드 + .KS, 코스닥은 .KQ)<br>
+          • 미국 주식: <code>AAPL</code> (대문자 티커)<br>
+          • 한국 지수: <code>^KS11</code>(KOSPI), <code>^KQ11</code>(KOSDAQ)<br>
+          • 미국 지수: <code>^IXIC</code>(나스닥), <code>^GSPC</code>(S&amp;P500), <code>^DJI</code>(다우)
         </div>
       </div>
     </div>
@@ -2922,33 +2923,53 @@ const DEFAULT_SHORTCUTS = [
   { icon: '▶️', name: 'YouTube', url: 'https://youtube.com' },
 ];
 
+// Yahoo Finance 심볼 포맷:
+//  - 한국 주식: 005930.KS  (.KS = KOSPI, .KQ = KOSDAQ)
+//  - 미국 주식: AAPL        (접미사 없음)
+//  - 한국 지수: ^KS11(KOSPI), ^KQ11(KOSDAQ)
+//  - 미국 지수: ^IXIC(NASDAQ), ^GSPC(S&P500), ^DJI(다우)
 const DEFAULT_STOCKS = [
-  { symbol: '^kospi', name: 'KOSPI' },
-  { symbol: '^ndq',   name: 'NASDAQ' },
-  { symbol: '005930.KR', name: '삼성전자' },
-  { symbol: 'nvda.us',   name: 'NVIDIA' },
+  { symbol: '^KS11',     name: 'KOSPI' },
+  { symbol: '^IXIC',     name: 'NASDAQ' },
+  { symbol: '005930.KS', name: '삼성전자' },
+  { symbol: 'NVDA',      name: 'NVIDIA' },
 ];
 
 const STOCK_RECOMMENDATIONS = [
-  { symbol: '^kospi',    name: 'KOSPI' },
-  { symbol: '^kosdaq',   name: 'KOSDAQ' },
-  { symbol: '^ndq',      name: 'NASDAQ' },
-  { symbol: '^spx',      name: 'S&P 500' },
-  { symbol: '^dji',      name: '다우' },
-  { symbol: '005930.KR', name: '삼성전자' },
-  { symbol: '000660.KR', name: 'SK하이닉스' },
-  { symbol: '035420.KR', name: 'NAVER' },
-  { symbol: '035720.KR', name: '카카오' },
-  { symbol: '373220.KR', name: 'LG에너지솔루션' },
-  { symbol: '207940.KR', name: '삼성바이오' },
-  { symbol: 'aapl.us',   name: 'Apple' },
-  { symbol: 'msft.us',   name: 'Microsoft' },
-  { symbol: 'googl.us',  name: 'Google' },
-  { symbol: 'nvda.us',   name: 'NVIDIA' },
-  { symbol: 'tsla.us',   name: 'Tesla' },
-  { symbol: 'amzn.us',   name: 'Amazon' },
-  { symbol: 'meta.us',   name: 'Meta' },
+  { symbol: '^KS11',     name: 'KOSPI' },
+  { symbol: '^KQ11',     name: 'KOSDAQ' },
+  { symbol: '^IXIC',     name: 'NASDAQ' },
+  { symbol: '^GSPC',     name: 'S&P 500' },
+  { symbol: '^DJI',      name: '다우' },
+  { symbol: '005930.KS', name: '삼성전자' },
+  { symbol: '000660.KS', name: 'SK하이닉스' },
+  { symbol: '035420.KS', name: 'NAVER' },
+  { symbol: '035720.KS', name: '카카오' },
+  { symbol: '373220.KS', name: 'LG에너지솔루션' },
+  { symbol: '207940.KS', name: '삼성바이오로직스' },
+  { symbol: 'AAPL',      name: 'Apple' },
+  { symbol: 'MSFT',      name: 'Microsoft' },
+  { symbol: 'GOOGL',     name: 'Google' },
+  { symbol: 'NVDA',      name: 'NVIDIA' },
+  { symbol: 'TSLA',      name: 'Tesla' },
+  { symbol: 'AMZN',      name: 'Amazon' },
+  { symbol: 'META',      name: 'Meta' },
 ];
+
+// 기존 Stooq 포맷 심볼을 Yahoo 포맷으로 자동 변환 (마이그레이션)
+function migrateStockSymbol(sym) {
+  const map = {
+    '^kospi': '^KS11', '^kosdaq': '^KQ11',
+    '^ndq': '^IXIC', '^spx': '^GSPC', '^dji': '^DJI',
+  };
+  const lower = String(sym).toLowerCase();
+  if (map[lower]) return map[lower];
+  // .KR → .KS (한국 주식)
+  if (/\.kr$/i.test(sym)) return sym.replace(/\.kr$/i, '.KS');
+  // .us → 제거 (미국 주식)
+  if (/\.us$/i.test(sym)) return sym.replace(/\.us$/i, '').toUpperCase();
+  return sym;
+}
 
 function loadPortalData() {
   try {
@@ -2965,6 +2986,13 @@ function loadPortalData() {
     if (st) portalStocks = JSON.parse(st);
     else { portalStocks = JSON.parse(JSON.stringify(DEFAULT_STOCKS)); savePortalStocks(); }
   } catch(e) { portalStocks = JSON.parse(JSON.stringify(DEFAULT_STOCKS)); }
+  // 기존 Stooq 포맷 → Yahoo 포맷 자동 마이그레이션
+  let migrated = false;
+  portalStocks.forEach(s => {
+    const newSym = migrateStockSymbol(s.symbol);
+    if (newSym !== s.symbol) { s.symbol = newSym; migrated = true; }
+  });
+  if (migrated) { savePortalStocks(); console.log('📊 주식 심볼 Yahoo 포맷으로 마이그레이션 완료'); }
 }
 function savePortalShortcuts() { _lsSet(PORTAL_SHORTCUTS_KEY, JSON.stringify(portalShortcuts)); }
 function savePortalTodos() { _lsSet(PORTAL_TODOS_KEY, JSON.stringify(portalTodos)); }
@@ -3205,23 +3233,30 @@ function addStockFromReco(symbol, name) {
   fetchStockPrices(true);
 }
 
-// Fetch quotes via Stooq CSV with CORS proxy fallback chain.
-// file:// origin is tricky — direct Stooq often blocks, so we try multiple proxies.
+// Yahoo Finance chart API via corsproxy.io
+// 일간 변동률 계산: (current - prevClose) / prevClose * 100
 let _stockFetchTime = 0;
 
-async function _tryFetchStockCsv(stooqUrl) {
-  const attempts = [
-    stooqUrl,                                                   // Direct (works on some browsers)
-    'https://corsproxy.io/?' + encodeURIComponent(stooqUrl),    // Proxy 1
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(stooqUrl), // Proxy 2
+async function _fetchYahooQuote(symbol) {
+  const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2d`;
+  const proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent(yahooUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(yahooUrl),
   ];
-  for (const url of attempts) {
+  for (const url of proxies) {
     try {
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) continue;
-      const text = await res.text();
-      if (text && text.toLowerCase().includes('symbol')) return text;
-    } catch(e) { /* try next */ }
+      const j = await res.json();
+      const result = j && j.chart && j.chart.result && j.chart.result[0];
+      if (!result || !result.meta) continue;
+      const m = result.meta;
+      const price = m.regularMarketPrice;
+      const prev = m.chartPreviousClose != null ? m.chartPreviousClose : m.previousClose;
+      if (price == null || prev == null) continue;
+      const pct = prev !== 0 ? ((price - prev) / prev * 100) : 0;
+      return { price, prev, pct, currency: m.currency || '', fetchedAt: Date.now() };
+    } catch(e) { /* try next proxy */ }
   }
   return null;
 }
@@ -3235,7 +3270,7 @@ async function fetchStockPrices(force) {
   const refreshBtn = document.getElementById('stockRefreshBtn');
   if (refreshBtn) refreshBtn.textContent = '⏳';
 
-  // Mark all as loading
+  // 모든 종목을 loading 상태로 표시
   portalStocks.forEach(s => {
     if (!_stockQuoteCache[s.symbol] || _stockQuoteCache[s.symbol].error) {
       _stockQuoteCache[s.symbol] = { loading: true };
@@ -3243,61 +3278,20 @@ async function fetchStockPrices(force) {
   });
   renderPortalStocks();
 
-  // Stooq batch: symbols separated by ","
-  // Format sd2t2ohlcvn: symbol, date, time, open, high, low, close, volume, name
-  const symbols = portalStocks.map(s => s.symbol).join(',');
-  const stooqUrl = `https://stooq.com/q/l/?s=${encodeURIComponent(symbols)}&f=sd2t2ohlcvn&h&e=csv`;
+  // 각 종목을 병렬로 개별 호출 (Yahoo Finance는 batch 지원 안 함)
+  const results = await Promise.all(
+    portalStocks.map(s => _fetchYahooQuote(s.symbol).catch(() => null))
+  );
 
-  const text = await _tryFetchStockCsv(stooqUrl);
-
-  if (!text) {
-    console.warn('주식 가격 조회 실패: 모든 프록시 실패');
-    portalStocks.forEach(s => {
+  portalStocks.forEach((s, i) => {
+    if (results[i]) {
+      _stockQuoteCache[s.symbol] = results[i];
+    } else {
       _stockQuoteCache[s.symbol] = { error: true, fetchedAt: Date.now() };
-    });
-    if (refreshBtn) refreshBtn.textContent = '🔄';
-    renderPortalStocks();
-    return;
-  }
-
-  try {
-    const lines = text.trim().split(/\r?\n/);
-    if (lines.length < 2) throw new Error('empty');
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const sIdx = headers.indexOf('symbol');
-    const oIdx = headers.indexOf('open');
-    const cIdx = headers.indexOf('close');
-    const seen = new Set();
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
-      if (cols.length < headers.length) continue;
-      const sym = (cols[sIdx] || '').trim();
-      const open = parseFloat(cols[oIdx]);
-      const close = parseFloat(cols[cIdx]);
-      if (!sym) continue;
-      const match = portalStocks.find(s => s.symbol.toLowerCase() === sym.toLowerCase());
-      if (!match) continue;
-      seen.add(match.symbol);
-      if (isNaN(close) || close === 0) {
-        _stockQuoteCache[match.symbol] = { error: true, fetchedAt: Date.now() };
-        continue;
-      }
-      const pct = (!isNaN(open) && open !== 0) ? ((close - open) / open * 100) : 0;
-      _stockQuoteCache[match.symbol] = { price: close, open, pct, fetchedAt: Date.now() };
     }
-    // Any symbol not seen in response = invalid ticker
-    portalStocks.forEach(s => {
-      if (!seen.has(s.symbol)) {
-        _stockQuoteCache[s.symbol] = { error: true, fetchedAt: Date.now() };
-      }
-    });
-    _stockFetchTime = Date.now();
-  } catch(e) {
-    console.warn('파싱 오류:', e);
-    portalStocks.forEach(s => {
-      _stockQuoteCache[s.symbol] = { error: true, fetchedAt: Date.now() };
-    });
-  }
+  });
+  _stockFetchTime = Date.now();
+
   if (refreshBtn) refreshBtn.textContent = '🔄';
   renderPortalStocks();
 }
