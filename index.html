@@ -12,7 +12,7 @@
   --primary: #1F4E79;
   --primary-light: #D6E4F0;
   --primary-dark: #163A5C;
-  --bg: #F5F7FA;
+  --bg: #F0F2F5;
   --card: #FFFFFF;
   --text: #2C3E50;
   --text-light: #7F8C8D;
@@ -21,9 +21,11 @@
   --pb: #F39C12; --pb-bg: #FFF3E0;
   --pc: #27AE60; --pc-bg: #E8F5E9;
   --done: #BDC3C7;
-  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
   --accent: #8E44AD;
   --accent-bg: #F5EEF8;
+  --portal-warm: #FF6B35;
+  --portal-warm-bg: #FFF0EB;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -595,10 +597,209 @@ body {
 }
 .eng-result h3 { color: var(--primary); margin-bottom: 8px; }
 
+/* ─── Portal Page ─── */
+.portal-page { padding: 0 0 20px; }
+.portal-hero {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: white; padding: 28px 20px 20px; position: relative; overflow: hidden;
+}
+.portal-hero.morning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #fda085 100%); }
+.portal-hero.afternoon { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+.portal-hero.evening { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 50%, #f6a085 100%); }
+.portal-hero.night { background: linear-gradient(135deg, #0c0c1d 0%, #1a1a2e 50%, #16213e 100%); }
+.portal-greeting { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+.portal-date { font-size: 14px; opacity: 0.8; }
+.portal-weather {
+  display: flex; align-items: center; gap: 12px; margin-top: 16px;
+  background: rgba(255,255,255,0.15); backdrop-filter: blur(10px);
+  border-radius: 14px; padding: 12px 16px;
+}
+.portal-weather-icon { font-size: 32px; }
+.portal-weather-temp { font-size: 28px; font-weight: 700; }
+.portal-weather-desc { font-size: 13px; opacity: 0.9; }
+.portal-weather-detail { font-size: 12px; opacity: 0.7; }
+
+.portal-section { padding: 0 16px; margin-top: 20px; }
+.portal-section-title {
+  font-size: 15px; font-weight: 700; color: var(--primary);
+  margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+}
+.portal-section-title .edit-btn {
+  margin-left: auto; font-size: 12px; color: var(--text-light);
+  background: none; border: 1px solid var(--border); border-radius: 8px;
+  padding: 3px 10px; cursor: pointer;
+}
+
+/* Shortcut Cards */
+.portal-shortcuts {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+}
+.portal-shortcut {
+  background: var(--card); border-radius: 16px; padding: 20px 8px 14px;
+  text-align: center; box-shadow: var(--shadow); cursor: pointer;
+  text-decoration: none; color: var(--text); transition: transform 0.15s, box-shadow 0.15s;
+  border: 1px solid transparent;
+}
+.portal-shortcut:active { transform: scale(0.96); }
+.portal-shortcut:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); border-color: var(--primary-light); }
+.portal-shortcut-icon { font-size: 44px; margin-bottom: 10px; display: block; line-height: 1; }
+.portal-shortcut-name { font-size: 12px; font-weight: 600; line-height: 1.3; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portal-shortcut.add-new {
+  border: 2px dashed var(--border); background: transparent;
+  color: var(--text-light); box-shadow: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.portal-shortcut.add-new .portal-shortcut-icon { font-size: 32px; color: var(--text-light); }
+@media (min-width: 500px) {
+  .portal-shortcuts { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* Stock Widget */
+.portal-stocks-wrap { position: relative; }
+.portal-stocks {
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.portal-stocks::-webkit-scrollbar { height: 4px; }
+.portal-stocks::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.portal-stock-card {
+  flex-shrink: 0; background: var(--card); border-radius: 12px;
+  padding: 12px 16px; box-shadow: var(--shadow); min-width: 140px;
+  cursor: pointer; position: relative; transition: transform 0.15s;
+  border: 1px solid transparent;
+}
+.portal-stock-card:active { transform: scale(0.97); }
+.portal-stock-card.editing { border-color: var(--primary-light); }
+.portal-stock-card .del-badge {
+  position: absolute; top: -6px; right: -6px; width: 22px; height: 22px;
+  background: #E74C3C; color: white; border-radius: 50%; border: 2px solid var(--bg);
+  display: none; align-items: center; justify-content: center; font-size: 14px;
+  font-weight: 700; line-height: 1;
+}
+.portal-stock-card.editing .del-badge { display: flex; }
+.portal-stock-name { font-size: 12px; color: var(--text-light); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.portal-stock-price { font-size: 18px; font-weight: 700; margin-top: 2px; }
+.portal-stock-change { font-size: 12px; font-weight: 600; margin-top: 2px; }
+.portal-stock-change.up { color: #E74C3C; }
+.portal-stock-change.down { color: #2962FF; }
+.portal-stock-change.flat { color: var(--text-light); }
+.portal-stock-card.add-new {
+  border: 2px dashed var(--border); background: transparent; box-shadow: none;
+  display: flex; align-items: center; justify-content: center; color: var(--text-light);
+  font-size: 24px; min-width: 70px;
+}
+.portal-stock-empty {
+  text-align: center; padding: 16px; color: var(--text-light); font-size: 13px;
+}
+
+/* Stock Recommendations */
+.portal-stock-recos {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px;
+  padding-top: 10px; border-top: 1px dashed var(--border);
+}
+.portal-stock-recos-label {
+  width: 100%; font-size: 11px; color: var(--text-light); margin-bottom: 2px;
+}
+.portal-stock-chip {
+  font-size: 12px; padding: 6px 12px; border-radius: 16px;
+  background: var(--card); border: 1px solid var(--border);
+  cursor: pointer; color: var(--text); font-family: inherit;
+  transition: all 0.15s;
+}
+.portal-stock-chip:hover { background: var(--primary-light); border-color: var(--primary); color: white; }
+.portal-stock-chip:active { transform: scale(0.96); }
+
+/* Stock Edit Modal */
+.stock-preview {
+  background: var(--bg); border-radius: 10px; padding: 12px 16px;
+  text-align: center; margin-bottom: 16px;
+}
+.stock-preview-name { font-size: 13px; color: var(--text-light); }
+.stock-preview-symbol { font-size: 16px; font-weight: 700; margin-top: 4px; font-family: monospace; }
+
+/* Quick Todo */
+.portal-todo-input-wrap {
+  display: flex; gap: 8px; margin-bottom: 10px;
+}
+.portal-todo-input {
+  flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 14px; font-family: inherit;
+  background: var(--bg); color: var(--text);
+}
+.portal-todo-input:focus { outline: none; border-color: var(--primary); background: white; }
+.portal-todo-add-btn {
+  padding: 10px 16px; background: var(--primary); color: white;
+  border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.portal-todo-list { list-style: none; }
+.portal-todo-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: var(--card); border-radius: 10px; margin-bottom: 6px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.portal-todo-check {
+  width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border);
+  flex-shrink: 0; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; transition: all 0.2s;
+}
+.portal-todo-check.done { background: var(--pc); border-color: var(--pc); color: white; }
+.portal-todo-text { flex: 1; font-size: 14px; }
+.portal-todo-text.done { text-decoration: line-through; color: var(--done); }
+.portal-todo-del { background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 16px; padding: 4px; }
+
+/* Weekly Summary Card on Portal */
+.portal-weekly-card {
+  background: var(--card); border-radius: 14px; padding: 16px;
+  box-shadow: var(--shadow);
+}
+.portal-wg-role { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.portal-wg-role-icon { font-size: 16px; }
+.portal-wg-role-name { font-size: 13px; font-weight: 600; color: var(--primary); }
+.portal-wg-role-count { margin-left: auto; font-size: 12px; color: var(--text-light); }
+.portal-wg-progress {
+  height: 6px; background: var(--bg); border-radius: 3px; margin-top: 4px; overflow: hidden;
+}
+.portal-wg-progress-bar {
+  height: 100%; border-radius: 3px; background: var(--pc); transition: width 0.3s;
+}
+.portal-wg-total {
+  display: flex; align-items: center; gap: 8px; padding: 12px 0 4px;
+  font-size: 14px; font-weight: 600; color: var(--text);
+}
+.portal-wg-total-bar {
+  flex: 1; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden;
+}
+.portal-wg-total-fill {
+  height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--pc), #2ecc71);
+  transition: width 0.3s;
+}
+
+/* Shortcut Edit Modal */
+.shortcut-form .form-group { margin-bottom: 14px; }
+.shortcut-icon-preview { font-size: 40px; text-align: center; margin-bottom: 8px; }
+
 @media (min-width: 768px) {
-  .task-list, .mission-page, .roles-page, .eng-page { max-width: 600px; margin: 0 auto; }
-  .weekly-page .weekly-role-section { max-width: 600px; margin-left: auto; margin-right: auto; }
+  .task-list, .mission-page, .roles-page, .eng-page { max-width: 760px; margin: 0 auto; }
+  .weekly-page .weekly-role-section { max-width: 760px; margin-left: auto; margin-right: auto; }
+  .portal-page .portal-section { max-width: 900px; margin-left: auto; margin-right: auto; }
+  .portal-hero { padding: 32px 40px 26px; }
+  .portal-page .portal-hero > div:first-child,
+  .portal-page .portal-greeting { max-width: 900px; margin-left: auto; margin-right: auto; }
+  .portal-shortcuts { grid-template-columns: repeat(6, 1fr) !important; gap: 14px; }
   .modal { border-radius: 20px; margin-bottom: 20px; }
+}
+@media (min-width: 1100px) {
+  .task-list, .mission-page, .roles-page, .eng-page { max-width: 900px; }
+  .weekly-page .weekly-role-section { max-width: 900px; }
+  .portal-page .portal-section { max-width: 1040px; }
+  .portal-hero { padding: 36px 48px 30px; }
+  .portal-shortcuts { grid-template-columns: repeat(8, 1fr) !important; gap: 16px; }
+  .portal-shortcut { padding: 24px 8px 16px; }
+  .portal-shortcut-icon { font-size: 48px !important; }
+}
+@media (min-width: 1400px) {
+  .portal-page .portal-section { max-width: 1200px; }
+  .portal-shortcuts { grid-template-columns: repeat(9, 1fr) !important; }
 }
 </style>
 </head>
@@ -616,6 +817,54 @@ body {
 </div>
 <div class="cloud-status" id="cloudStatus"></div>
 <div class="sync-toast" id="syncToast"></div>
+
+<!-- ═══════ Portal Page ═══════ -->
+<div class="page active" id="pagePortal">
+  <div class="portal-page">
+    <div class="portal-hero" id="portalHero">
+      <div class="portal-greeting" id="portalGreeting">좋은 하루!</div>
+      <div class="portal-date" id="portalDate"></div>
+      <div class="portal-weather" id="portalWeather">
+        <span class="portal-weather-icon">⏳</span>
+        <div>
+          <div class="portal-weather-temp">--°</div>
+          <div class="portal-weather-desc">날씨 로딩 중...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stock Widget -->
+    <div class="portal-section">
+      <div class="portal-section-title">📈 시장 현황 <button class="edit-btn" id="stockEditToggle" onclick="toggleStockEdit()">편집</button> <button class="edit-btn" id="stockRefreshBtn" onclick="fetchStockPrices(true)" style="margin-left:6px">🔄</button></div>
+      <div class="portal-stocks-wrap">
+        <div class="portal-stocks" id="portalStocks"></div>
+        <div class="portal-stock-recos" id="portalStockRecos" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- App Shortcuts -->
+    <div class="portal-section">
+      <div class="portal-section-title">⚡ 바로가기 <button class="edit-btn" id="shortcutEditToggle" onclick="toggleShortcutEdit()">편집</button></div>
+      <div class="portal-shortcuts" id="portalShortcuts"></div>
+    </div>
+
+    <!-- Quick Todo -->
+    <div class="portal-section">
+      <div class="portal-section-title">✅ 퀵 메모</div>
+      <div class="portal-todo-input-wrap">
+        <input type="text" class="portal-todo-input" id="portalTodoInput" placeholder="할 일을 적어보세요..." onkeydown="if(event.key==='Enter')addPortalTodo()">
+        <button class="portal-todo-add-btn" onclick="addPortalTodo()">추가</button>
+      </div>
+      <ul class="portal-todo-list" id="portalTodoList"></ul>
+    </div>
+
+    <!-- Weekly Summary -->
+    <div class="portal-section" style="margin-bottom: 20px;">
+      <div class="portal-section-title">📅 이번 주 목표</div>
+      <div class="portal-weekly-card" id="portalWeeklySummary"></div>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════ Mission Page ═══════ -->
 <div class="page" id="pageMission">
@@ -649,7 +898,7 @@ body {
 </div>
 
 <!-- ═══════ Weekly Campus Page ═══════ -->
-<div class="page active" id="pageWeekly">
+<div class="page" id="pageWeekly">
   <div class="weekly-page">
     <div class="week-nav">
       <button onclick="changeWeek(-1)">&#8249;</button>
@@ -693,7 +942,10 @@ body {
 
 <!-- Tab Bar -->
 <div class="tab-bar">
-  <button class="tab-item active" data-page="pageWeekly" onclick="switchTab(this)">
+  <button class="tab-item active" data-page="pagePortal" onclick="switchTab(this)">
+    <span class="tab-icon">🏠</span><span class="tab-label">포털</span>
+  </button>
+  <button class="tab-item" data-page="pageWeekly" onclick="switchTab(this)">
     <span class="tab-icon">📅</span><span class="tab-label">위클리</span>
   </button>
   <button class="tab-item" data-page="pageMemo" onclick="switchTab(this)">
@@ -861,6 +1113,60 @@ body {
       3. "플래너 데이터 반영해줘" 또는 "아침 루틴"이라고 말하기<br>
       → 모닝 브리핑에 오늘 할 일이 함께 정리됩니다.
     </div>
+  </div>
+</div>
+
+<!-- Shortcut Edit Modal -->
+<div class="modal-overlay" id="shortcutModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="shortcutModalTitle">바로가기 추가</h2>
+    <div class="shortcut-form">
+      <div class="shortcut-icon-preview" id="shortcutIconPreview">🔗</div>
+      <div class="form-group">
+        <label>아이콘 (이모지)</label>
+        <input type="text" id="shortcutIconInput" placeholder="🔗" maxlength="4" style="text-align:center;font-size:24px;">
+      </div>
+      <div class="form-group">
+        <label>이름</label>
+        <input type="text" id="shortcutNameInput" placeholder="예: Google Calendar">
+      </div>
+      <div class="form-group">
+        <label>URL</label>
+        <input type="url" id="shortcutUrlInput" placeholder="https://...">
+      </div>
+    </div>
+    <button class="btn-submit" id="shortcutSubmitBtn" onclick="saveShortcut()">추가하기</button>
+    <button class="btn-delete" id="shortcutDeleteBtn" style="display:none" onclick="deleteShortcut()">삭제하기</button>
+  </div>
+</div>
+
+<!-- Stock Edit Modal -->
+<div class="modal-overlay" id="stockModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="stockModalTitle">종목 추가</h2>
+    <div class="shortcut-form">
+      <div class="stock-preview">
+        <div class="stock-preview-name" id="stockPreviewName">새 종목</div>
+        <div class="stock-preview-symbol" id="stockPreviewSymbol">SYMBOL</div>
+      </div>
+      <div class="form-group">
+        <label>종목명 (표시용)</label>
+        <input type="text" id="stockNameInput" placeholder="예: 삼성전자">
+      </div>
+      <div class="form-group">
+        <label>티커 심볼 (Stooq 형식)</label>
+        <input type="text" id="stockSymbolInput" placeholder="예: 005930.KR, aapl.us, ^kospi" style="font-family:monospace">
+        <div style="font-size:11px;color:var(--text-light);margin-top:6px;line-height:1.5">
+          • 한국 주식: <code>005930.KR</code> (코드 6자리 + .KR)<br>
+          • 미국 주식: <code>aapl.us</code> (소문자 티커 + .us)<br>
+          • 지수: <code>^kospi</code>, <code>^ndq</code>, <code>^spx</code>
+        </div>
+      </div>
+    </div>
+    <button class="btn-submit" id="stockSubmitBtn" onclick="saveStock()">추가하기</button>
+    <button class="btn-delete" id="stockDeleteBtn" style="display:none" onclick="deleteStock()">삭제하기</button>
   </div>
 </div>
 
@@ -1268,8 +1574,9 @@ function renderAll() {
 }
 
 // ═══════ TAB NAVIGATION ═══════
-let currentTab = 'pageWeekly';
+let currentTab = 'pagePortal';
 const pageTitles = {
+  pagePortal: ['DUAL Portal', '나만의 인지 지도'],
   pageEnglish: ['영어 퀴즈', '에빙하우스 간격 반복'],
   pageWeekly: ['위클리 캠퍼스', '역할별 주간 목표'],
   pageMemo: ['주간 메모', '이번 주 기록과 생각'],
@@ -1292,6 +1599,7 @@ function switchTab(el) {
   fab.classList.toggle('visible', false);
   expFab.classList.toggle('visible', false);
 
+  if (page === 'pagePortal') renderPortal();
   if (page === 'pageEnglish') renderEnglishQuiz();
   if (page === 'pageWeekly') renderWeekly();
   if (page === 'pageMemo') renderMemo();
@@ -2590,15 +2898,592 @@ function autoLoadEngDB() {
   }
 }
 
+// ═══════ PORTAL ═══════
+const PORTAL_SHORTCUTS_KEY = 'fp_portal_shortcuts';
+const PORTAL_TODOS_KEY = 'fp_portal_todos';
+const PORTAL_STOCKS_KEY = 'fp_portal_stocks';
+let portalShortcuts = [];
+let portalTodos = [];
+let portalStocks = [];
+let editingShortcutIdx = null;
+let shortcutEditMode = false;
+let editingStockIdx = null;
+let stockEditMode = false;
+let _stockQuoteCache = {};  // symbol → { price, change, pct, fetchedAt }
+
+const DEFAULT_SHORTCUTS = [
+  { icon: '🏫', name: '서일대 포털', url: 'https://portal.seoil.ac.kr' },
+  { icon: '📅', name: 'Google 캘린더', url: 'https://calendar.google.com' },
+  { icon: '📓', name: 'NotebookLM', url: 'https://notebooklm.google.com' },
+  { icon: '📦', name: 'Dropbox', url: 'https://www.dropbox.com' },
+  { icon: '🤖', name: 'Claude', url: 'https://claude.ai' },
+  { icon: '💬', name: 'ChatGPT', url: 'https://chat.openai.com' },
+  { icon: '🐙', name: 'GitHub', url: 'https://github.com' },
+  { icon: '▶️', name: 'YouTube', url: 'https://youtube.com' },
+];
+
+const DEFAULT_STOCKS = [
+  { symbol: '^kospi', name: 'KOSPI' },
+  { symbol: '^ndq',   name: 'NASDAQ' },
+  { symbol: '005930.KR', name: '삼성전자' },
+  { symbol: 'nvda.us',   name: 'NVIDIA' },
+];
+
+const STOCK_RECOMMENDATIONS = [
+  { symbol: '^kospi',    name: 'KOSPI' },
+  { symbol: '^kosdaq',   name: 'KOSDAQ' },
+  { symbol: '^ndq',      name: 'NASDAQ' },
+  { symbol: '^spx',      name: 'S&P 500' },
+  { symbol: '^dji',      name: '다우' },
+  { symbol: '005930.KR', name: '삼성전자' },
+  { symbol: '000660.KR', name: 'SK하이닉스' },
+  { symbol: '035420.KR', name: 'NAVER' },
+  { symbol: '035720.KR', name: '카카오' },
+  { symbol: '373220.KR', name: 'LG에너지솔루션' },
+  { symbol: '207940.KR', name: '삼성바이오' },
+  { symbol: 'aapl.us',   name: 'Apple' },
+  { symbol: 'msft.us',   name: 'Microsoft' },
+  { symbol: 'googl.us',  name: 'Google' },
+  { symbol: 'nvda.us',   name: 'NVIDIA' },
+  { symbol: 'tsla.us',   name: 'Tesla' },
+  { symbol: 'amzn.us',   name: 'Amazon' },
+  { symbol: 'meta.us',   name: 'Meta' },
+];
+
+function loadPortalData() {
+  try {
+    const s = _lsGet(PORTAL_SHORTCUTS_KEY);
+    if (s) portalShortcuts = JSON.parse(s);
+    else { portalShortcuts = JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS)); savePortalShortcuts(); }
+  } catch(e) { portalShortcuts = JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS)); }
+  try {
+    const t = _lsGet(PORTAL_TODOS_KEY);
+    if (t) portalTodos = JSON.parse(t);
+  } catch(e) { portalTodos = []; }
+  try {
+    const st = _lsGet(PORTAL_STOCKS_KEY);
+    if (st) portalStocks = JSON.parse(st);
+    else { portalStocks = JSON.parse(JSON.stringify(DEFAULT_STOCKS)); savePortalStocks(); }
+  } catch(e) { portalStocks = JSON.parse(JSON.stringify(DEFAULT_STOCKS)); }
+}
+function savePortalShortcuts() { _lsSet(PORTAL_SHORTCUTS_KEY, JSON.stringify(portalShortcuts)); }
+function savePortalTodos() { _lsSet(PORTAL_TODOS_KEY, JSON.stringify(portalTodos)); }
+function savePortalStocks() { _lsSet(PORTAL_STOCKS_KEY, JSON.stringify(portalStocks)); }
+
+function renderPortal() {
+  renderPortalHero();
+  renderPortalShortcuts();
+  renderPortalStocks();
+  renderPortalTodos();
+  renderPortalWeekly();
+  fetchWeather();
+  fetchStockPrices();
+}
+
+function renderPortalHero() {
+  const now = new Date();
+  const h = now.getHours();
+  const hero = document.getElementById('portalHero');
+  const greet = document.getElementById('portalGreeting');
+  const dateEl = document.getElementById('portalDate');
+
+  let period, greeting;
+  if (h >= 5 && h < 12) { period = 'morning'; greeting = '좋은 아침이에요 ☀️'; }
+  else if (h >= 12 && h < 17) { period = 'afternoon'; greeting = '오후도 파이팅 💪'; }
+  else if (h >= 17 && h < 21) { period = 'evening'; greeting = '수고한 하루 🌅'; }
+  else { period = 'night'; greeting = '편안한 밤 되세요 🌙'; }
+
+  hero.className = 'portal-hero ' + period;
+  greet.textContent = greeting;
+
+  const days = ['일','월','화','수','목','금','토'];
+  dateEl.textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]}) ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+// Weather (wttr.in — works with CORS, no API key)
+let _weatherCache = null;
+let _weatherCacheTime = 0;
+async function fetchWeather() {
+  const el = document.getElementById('portalWeather');
+  // Cache for 30 min
+  if (_weatherCache && Date.now() - _weatherCacheTime < 30*60*1000) {
+    renderWeatherWidget(_weatherCache);
+    return;
+  }
+  try {
+    const res = await fetch('https://wttr.in/Seoul?format=j1');
+    const d = await res.json();
+    _weatherCache = d;
+    _weatherCacheTime = Date.now();
+    renderWeatherWidget(d);
+  } catch(e) {
+    el.innerHTML = `<span class="portal-weather-icon">🌡️</span><div><div class="portal-weather-temp">--°</div><div class="portal-weather-desc">날씨를 가져올 수 없어요</div></div>`;
+  }
+}
+
+function renderWeatherWidget(d) {
+  const el = document.getElementById('portalWeather');
+  try {
+    const cur = d.current_condition[0];
+    const temp = cur.temp_C;
+    const feel = cur.FeelsLikeC;
+    const desc = cur.lang_ko && cur.lang_ko[0] ? cur.lang_ko[0].value : cur.weatherDesc[0].value;
+    const humidity = cur.humidity;
+    const code = parseInt(cur.weatherCode);
+
+    let icon = '🌤️';
+    if (code === 113) icon = '☀️';
+    else if (code === 116) icon = '⛅';
+    else if (code === 119 || code === 122) icon = '☁️';
+    else if ([176,263,266,293,296,299,302,305,308,311,314,317,320,353,356,359].includes(code)) icon = '🌧️';
+    else if ([200,386,389,392,395].includes(code)) icon = '⛈️';
+    else if ([179,182,185,227,230,323,326,329,332,335,338,350,362,365,368,371,374,377].includes(code)) icon = '❄️';
+    else if ([143,248,260].includes(code)) icon = '🌫️';
+
+    el.innerHTML = `
+      <span class="portal-weather-icon">${icon}</span>
+      <div>
+        <div class="portal-weather-temp">${temp}°C</div>
+        <div class="portal-weather-desc">${desc}</div>
+        <div class="portal-weather-detail">체감 ${feel}° · 습도 ${humidity}%</div>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<span class="portal-weather-icon">🌡️</span><div><div class="portal-weather-temp">--°</div><div class="portal-weather-desc">파싱 오류</div></div>`;
+  }
+}
+
+// ═══════ Stock Widget ═══════
+function formatStockPrice(p) {
+  if (p == null || isNaN(p)) return '--';
+  if (p >= 1000) return Math.round(p).toLocaleString();
+  if (p >= 100)  return p.toFixed(1);
+  return p.toFixed(2);
+}
+
+function renderPortalStocks() {
+  const el = document.getElementById('portalStocks');
+  const recoEl = document.getElementById('portalStockRecos');
+
+  if (portalStocks.length === 0 && !stockEditMode) {
+    el.innerHTML = '<div class="portal-stock-empty">종목이 없어요. 편집을 눌러 추가해보세요.</div>';
+  } else {
+    let html = portalStocks.map((s, i) => {
+      const q = _stockQuoteCache[s.symbol];
+      let priceHtml, changeHtml;
+      if (q && q.price != null) {
+        priceHtml = formatStockPrice(q.price);
+        const cls = q.pct > 0 ? 'up' : (q.pct < 0 ? 'down' : 'flat');
+        const arrow = q.pct > 0 ? '▲' : (q.pct < 0 ? '▼' : '–');
+        const pctStr = (q.pct == null || isNaN(q.pct)) ? '--' : (Math.abs(q.pct).toFixed(2) + '%');
+        changeHtml = `<div class="portal-stock-change ${cls}">${arrow} ${pctStr}</div>`;
+      } else if (q && q.loading) {
+        priceHtml = '<span style="color:var(--text-light)">…</span>';
+        changeHtml = `<div class="portal-stock-change flat">로딩 중</div>`;
+      } else if (q && q.error) {
+        priceHtml = '<span style="color:var(--text-light)">--</span>';
+        changeHtml = `<div class="portal-stock-change flat">조회 실패</div>`;
+      } else {
+        priceHtml = '<span style="color:var(--text-light)">…</span>';
+        changeHtml = `<div class="portal-stock-change flat">대기 중</div>`;
+      }
+      const clickHandler = stockEditMode ? `onclick="openStockModal(${i})"` : '';
+      return `<div class="portal-stock-card ${stockEditMode?'editing':''}" ${clickHandler}>
+        <div class="del-badge" onclick="event.stopPropagation();quickDeleteStock(${i})">×</div>
+        <div class="portal-stock-name">${escapeHtml(s.name)}</div>
+        <div class="portal-stock-price">${priceHtml}</div>
+        ${changeHtml}
+      </div>`;
+    }).join('');
+    if (stockEditMode) {
+      html += `<div class="portal-stock-card add-new" onclick="openStockModal()">+</div>`;
+    }
+    el.innerHTML = html;
+  }
+
+  // Recommendation chips only in edit mode
+  if (stockEditMode) {
+    const owned = new Set(portalStocks.map(s => s.symbol.toLowerCase()));
+    const available = STOCK_RECOMMENDATIONS.filter(r => !owned.has(r.symbol.toLowerCase()));
+    if (available.length > 0) {
+      recoEl.innerHTML = '<div class="portal-stock-recos-label">💡 추천 종목 (탭하면 추가)</div>'
+        + available.map(r =>
+            `<button class="portal-stock-chip" onclick="addStockFromReco('${escapeHtml(r.symbol)}','${escapeHtml(r.name)}')">${escapeHtml(r.name)}</button>`
+          ).join('');
+      recoEl.style.display = 'flex';
+    } else {
+      recoEl.innerHTML = '<div class="portal-stock-recos-label">모든 추천 종목이 이미 추가되어 있어요.</div>';
+      recoEl.style.display = 'flex';
+    }
+  } else {
+    recoEl.style.display = 'none';
+  }
+}
+
+function toggleStockEdit() {
+  stockEditMode = !stockEditMode;
+  const btn = document.getElementById('stockEditToggle');
+  btn.textContent = stockEditMode ? '완료' : '편집';
+  btn.style.background = stockEditMode ? 'var(--primary)' : '';
+  btn.style.color = stockEditMode ? 'white' : '';
+  renderPortalStocks();
+}
+
+function openStockModal(idx) {
+  if (idx !== undefined) {
+    editingStockIdx = idx;
+    const s = portalStocks[idx];
+    document.getElementById('stockModalTitle').textContent = '종목 수정';
+    document.getElementById('stockSubmitBtn').textContent = '수정하기';
+    document.getElementById('stockDeleteBtn').style.display = 'block';
+    document.getElementById('stockNameInput').value = s.name;
+    document.getElementById('stockSymbolInput').value = s.symbol;
+    document.getElementById('stockPreviewName').textContent = s.name;
+    document.getElementById('stockPreviewSymbol').textContent = s.symbol;
+  } else {
+    editingStockIdx = null;
+    document.getElementById('stockModalTitle').textContent = '종목 추가';
+    document.getElementById('stockSubmitBtn').textContent = '추가하기';
+    document.getElementById('stockDeleteBtn').style.display = 'none';
+    document.getElementById('stockNameInput').value = '';
+    document.getElementById('stockSymbolInput').value = '';
+    document.getElementById('stockPreviewName').textContent = '새 종목';
+    document.getElementById('stockPreviewSymbol').textContent = 'SYMBOL';
+  }
+  openModal('stockModal');
+  setTimeout(() => document.getElementById('stockNameInput').focus(), 300);
+}
+
+// Live preview for stock modal
+document.addEventListener('DOMContentLoaded', function() {
+  const nameInput = document.getElementById('stockNameInput');
+  const symInput = document.getElementById('stockSymbolInput');
+  if (nameInput) nameInput.addEventListener('input', function() {
+    document.getElementById('stockPreviewName').textContent = this.value || '새 종목';
+  });
+  if (symInput) symInput.addEventListener('input', function() {
+    document.getElementById('stockPreviewSymbol').textContent = this.value || 'SYMBOL';
+  });
+});
+
+function saveStock() {
+  const name = document.getElementById('stockNameInput').value.trim();
+  const symbol = document.getElementById('stockSymbolInput').value.trim();
+  if (!name || !symbol) return;
+  if (editingStockIdx !== null) {
+    portalStocks[editingStockIdx] = { symbol, name };
+  } else {
+    portalStocks.push({ symbol, name });
+  }
+  savePortalStocks();
+  closeModal('stockModal');
+  renderPortalStocks();
+  fetchStockPrices(true);
+}
+
+function deleteStock() {
+  if (editingStockIdx !== null && confirm('이 종목을 삭제하시겠습니까?')) {
+    portalStocks.splice(editingStockIdx, 1);
+    savePortalStocks();
+    closeModal('stockModal');
+    renderPortalStocks();
+  }
+}
+
+function quickDeleteStock(idx) {
+  if (confirm(`"${portalStocks[idx].name}"를 삭제할까요?`)) {
+    portalStocks.splice(idx, 1);
+    savePortalStocks();
+    renderPortalStocks();
+  }
+}
+
+function addStockFromReco(symbol, name) {
+  if (portalStocks.some(s => s.symbol.toLowerCase() === symbol.toLowerCase())) return;
+  portalStocks.push({ symbol, name });
+  savePortalStocks();
+  renderPortalStocks();
+  fetchStockPrices(true);
+}
+
+// Fetch quotes via Stooq CSV with CORS proxy fallback chain.
+// file:// origin is tricky — direct Stooq often blocks, so we try multiple proxies.
+let _stockFetchTime = 0;
+
+async function _tryFetchStockCsv(stooqUrl) {
+  const attempts = [
+    stooqUrl,                                                   // Direct (works on some browsers)
+    'https://corsproxy.io/?' + encodeURIComponent(stooqUrl),    // Proxy 1
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(stooqUrl), // Proxy 2
+  ];
+  for (const url of attempts) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (text && text.toLowerCase().includes('symbol')) return text;
+    } catch(e) { /* try next */ }
+  }
+  return null;
+}
+
+async function fetchStockPrices(force) {
+  if (portalStocks.length === 0) { renderPortalStocks(); return; }
+  if (!force && _stockFetchTime && Date.now() - _stockFetchTime < 5*60*1000) {
+    renderPortalStocks();
+    return;
+  }
+  const refreshBtn = document.getElementById('stockRefreshBtn');
+  if (refreshBtn) refreshBtn.textContent = '⏳';
+
+  // Mark all as loading
+  portalStocks.forEach(s => {
+    if (!_stockQuoteCache[s.symbol] || _stockQuoteCache[s.symbol].error) {
+      _stockQuoteCache[s.symbol] = { loading: true };
+    }
+  });
+  renderPortalStocks();
+
+  // Stooq batch: symbols separated by ","
+  // Format sd2t2ohlcvn: symbol, date, time, open, high, low, close, volume, name
+  const symbols = portalStocks.map(s => s.symbol).join(',');
+  const stooqUrl = `https://stooq.com/q/l/?s=${encodeURIComponent(symbols)}&f=sd2t2ohlcvn&h&e=csv`;
+
+  const text = await _tryFetchStockCsv(stooqUrl);
+
+  if (!text) {
+    console.warn('주식 가격 조회 실패: 모든 프록시 실패');
+    portalStocks.forEach(s => {
+      _stockQuoteCache[s.symbol] = { error: true, fetchedAt: Date.now() };
+    });
+    if (refreshBtn) refreshBtn.textContent = '🔄';
+    renderPortalStocks();
+    return;
+  }
+
+  try {
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) throw new Error('empty');
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const sIdx = headers.indexOf('symbol');
+    const oIdx = headers.indexOf('open');
+    const cIdx = headers.indexOf('close');
+    const seen = new Set();
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      if (cols.length < headers.length) continue;
+      const sym = (cols[sIdx] || '').trim();
+      const open = parseFloat(cols[oIdx]);
+      const close = parseFloat(cols[cIdx]);
+      if (!sym) continue;
+      const match = portalStocks.find(s => s.symbol.toLowerCase() === sym.toLowerCase());
+      if (!match) continue;
+      seen.add(match.symbol);
+      if (isNaN(close) || close === 0) {
+        _stockQuoteCache[match.symbol] = { error: true, fetchedAt: Date.now() };
+        continue;
+      }
+      const pct = (!isNaN(open) && open !== 0) ? ((close - open) / open * 100) : 0;
+      _stockQuoteCache[match.symbol] = { price: close, open, pct, fetchedAt: Date.now() };
+    }
+    // Any symbol not seen in response = invalid ticker
+    portalStocks.forEach(s => {
+      if (!seen.has(s.symbol)) {
+        _stockQuoteCache[s.symbol] = { error: true, fetchedAt: Date.now() };
+      }
+    });
+    _stockFetchTime = Date.now();
+  } catch(e) {
+    console.warn('파싱 오류:', e);
+    portalStocks.forEach(s => {
+      _stockQuoteCache[s.symbol] = { error: true, fetchedAt: Date.now() };
+    });
+  }
+  if (refreshBtn) refreshBtn.textContent = '🔄';
+  renderPortalStocks();
+}
+
+// Shortcuts
+function renderPortalShortcuts() {
+  const el = document.getElementById('portalShortcuts');
+  let html = portalShortcuts.map((s, i) => {
+    if (shortcutEditMode) {
+      return `<div class="portal-shortcut" onclick="openShortcutModal(${i})">
+        <span class="portal-shortcut-icon">${s.icon}</span>
+        <span class="portal-shortcut-name">✏️ ${escapeHtml(s.name)}</span>
+      </div>`;
+    }
+    return `<a class="portal-shortcut" href="${escapeHtml(s.url)}" target="_blank" rel="noopener">
+      <span class="portal-shortcut-icon">${s.icon}</span>
+      <span class="portal-shortcut-name">${escapeHtml(s.name)}</span>
+    </a>`;
+  }).join('');
+  html += `<div class="portal-shortcut add-new" onclick="openShortcutModal()">
+    <span class="portal-shortcut-icon">+</span>
+    <span class="portal-shortcut-name">추가</span>
+  </div>`;
+  el.innerHTML = html;
+}
+
+function toggleShortcutEdit() {
+  shortcutEditMode = !shortcutEditMode;
+  const btn = document.getElementById('shortcutEditToggle');
+  btn.textContent = shortcutEditMode ? '완료' : '편집';
+  btn.style.background = shortcutEditMode ? 'var(--primary)' : '';
+  btn.style.color = shortcutEditMode ? 'white' : '';
+  renderPortalShortcuts();
+}
+
+function openShortcutModal(idx) {
+  if (idx !== undefined) {
+    editingShortcutIdx = idx;
+    const s = portalShortcuts[idx];
+    document.getElementById('shortcutModalTitle').textContent = '바로가기 수정';
+    document.getElementById('shortcutSubmitBtn').textContent = '수정하기';
+    document.getElementById('shortcutDeleteBtn').style.display = 'block';
+    document.getElementById('shortcutIconInput').value = s.icon;
+    document.getElementById('shortcutNameInput').value = s.name;
+    document.getElementById('shortcutUrlInput').value = s.url;
+    document.getElementById('shortcutIconPreview').textContent = s.icon;
+  } else {
+    editingShortcutIdx = null;
+    document.getElementById('shortcutModalTitle').textContent = '바로가기 추가';
+    document.getElementById('shortcutSubmitBtn').textContent = '추가하기';
+    document.getElementById('shortcutDeleteBtn').style.display = 'none';
+    document.getElementById('shortcutIconInput').value = '';
+    document.getElementById('shortcutNameInput').value = '';
+    document.getElementById('shortcutUrlInput').value = '';
+    document.getElementById('shortcutIconPreview').textContent = '🔗';
+  }
+  openModal('shortcutModal');
+  setTimeout(() => document.getElementById('shortcutNameInput').focus(), 300);
+}
+
+// Live preview icon
+document.addEventListener('DOMContentLoaded', function() {
+  const iconInput = document.getElementById('shortcutIconInput');
+  if (iconInput) {
+    iconInput.addEventListener('input', function() {
+      document.getElementById('shortcutIconPreview').textContent = this.value || '🔗';
+    });
+  }
+});
+
+function saveShortcut() {
+  const icon = document.getElementById('shortcutIconInput').value.trim() || '🔗';
+  const name = document.getElementById('shortcutNameInput').value.trim();
+  const url = document.getElementById('shortcutUrlInput').value.trim();
+  if (!name || !url) return;
+  if (editingShortcutIdx !== null) {
+    portalShortcuts[editingShortcutIdx] = { icon, name, url };
+  } else {
+    portalShortcuts.push({ icon, name, url });
+  }
+  savePortalShortcuts();
+  closeModal('shortcutModal');
+  renderPortalShortcuts();
+}
+
+function deleteShortcut() {
+  if (editingShortcutIdx !== null && confirm('이 바로가기를 삭제하시겠습니까?')) {
+    portalShortcuts.splice(editingShortcutIdx, 1);
+    savePortalShortcuts();
+    closeModal('shortcutModal');
+    renderPortalShortcuts();
+  }
+}
+
+// Quick Todo
+function addPortalTodo() {
+  const input = document.getElementById('portalTodoInput');
+  const text = input.value.trim();
+  if (!text) return;
+  portalTodos.unshift({ id: Date.now().toString(), text, done: false });
+  savePortalTodos();
+  input.value = '';
+  renderPortalTodos();
+}
+
+function togglePortalTodo(id) {
+  const t = portalTodos.find(t => t.id === id);
+  if (t) { t.done = !t.done; savePortalTodos(); renderPortalTodos(); }
+}
+
+function deletePortalTodo(id) {
+  portalTodos = portalTodos.filter(t => t.id !== id);
+  savePortalTodos();
+  renderPortalTodos();
+}
+
+function renderPortalTodos() {
+  const el = document.getElementById('portalTodoList');
+  if (portalTodos.length === 0) {
+    el.innerHTML = '<li style="text-align:center;padding:16px;color:var(--text-light);font-size:13px">메모가 없어요. 위에서 추가해보세요!</li>';
+    return;
+  }
+  el.innerHTML = portalTodos.map(t => `
+    <li class="portal-todo-item">
+      <div class="portal-todo-check ${t.done?'done':''}" onclick="togglePortalTodo('${t.id}')">${t.done?'✔':''}</div>
+      <span class="portal-todo-text ${t.done?'done':''}">${escapeHtml(t.text)}</span>
+      <button class="portal-todo-del" onclick="deletePortalTodo('${t.id}')">×</button>
+    </li>
+  `).join('');
+}
+
+// Portal Weekly Summary
+function renderPortalWeekly() {
+  const el = document.getElementById('portalWeeklySummary');
+  const weekKey = getWeekKey(getWeekStart(new Date()));
+  const weekGoals = data.weeklyGoals.filter(g => g.week === weekKey);
+
+  if (weekGoals.length === 0 || data.roles.length === 0) {
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light);font-size:13px">이번 주 목표가 없습니다.<br>위클리 탭에서 추가해보세요.</div>';
+    return;
+  }
+
+  const totalDone = weekGoals.filter(g => g.done).length;
+  const totalCount = weekGoals.length;
+  const pct = Math.round(totalDone / totalCount * 100);
+
+  let html = `<div class="portal-wg-total">
+    <span>${pct}%</span>
+    <div class="portal-wg-total-bar"><div class="portal-wg-total-fill" style="width:${pct}%"></div></div>
+    <span style="color:var(--text-light);font-size:12px">${totalDone}/${totalCount}</span>
+  </div>`;
+
+  data.roles.forEach(role => {
+    const rg = weekGoals.filter(g => g.roleId === role.id);
+    if (rg.length === 0) return;
+    const done = rg.filter(g => g.done).length;
+    const rpct = Math.round(done / rg.length * 100);
+    html += `<div style="margin-top:10px">
+      <div class="portal-wg-role">
+        <span class="portal-wg-role-icon">${role.icon}</span>
+        <span class="portal-wg-role-name">${escapeHtml(role.name)}</span>
+        <span class="portal-wg-role-count">${done}/${rg.length}</span>
+      </div>
+      <div class="portal-wg-progress"><div class="portal-wg-progress-bar" style="width:${rpct}%"></div></div>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+// Portal hero time update (every minute)
+setInterval(() => {
+  if (currentTab === 'pagePortal') renderPortalHero();
+}, 60000);
+
 // ═══════ INIT ═══════
 load();
 loadMemos();
 autoLoadEngDB();
+loadPortalData();
+renderPortal();
 renderMission();
 renderWeekly();
 renderRoles();
-document.getElementById('pageTitle').textContent = pageTitles['pageWeekly'][0];
-document.getElementById('pageSub').textContent = pageTitles['pageWeekly'][1];
+document.getElementById('pageTitle').textContent = pageTitles['pagePortal'][0];
+document.getElementById('pageSub').textContent = pageTitles['pagePortal'][1];
 initCloudSync();
 </script>
 </body>
