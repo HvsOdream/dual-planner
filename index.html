@@ -2977,6 +2977,15 @@ function loadPortalData() {
     if (s) portalShortcuts = JSON.parse(s);
     else { portalShortcuts = JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS)); savePortalShortcuts(); }
   } catch(e) { portalShortcuts = JSON.parse(JSON.stringify(DEFAULT_SHORTCUTS)); }
+  // URL 마이그레이션 (portal.seoil.ac.kr → gw.seoil.ac.kr)
+  let scMigrated = false;
+  portalShortcuts.forEach(s => {
+    if (s.url && s.url.includes('portal.seoil.ac.kr')) {
+      s.url = 'https://gw.seoil.ac.kr/';
+      scMigrated = true;
+    }
+  });
+  if (scMigrated) savePortalShortcuts();
   try {
     const t = _lsGet(PORTAL_TODOS_KEY);
     if (t) portalTodos = JSON.parse(t);
