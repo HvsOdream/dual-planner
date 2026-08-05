@@ -83,6 +83,17 @@ button { cursor: pointer; }
 .nav-chip:active { background: var(--primary-light); }
 .nav-chip.back { color: var(--primary); border-color: var(--primary-light); }
 .subnav .pgtitle { font-size: 15px; font-weight: 800; margin-left: 4px; }
+/* 오늘 일정 (구글 캘린더) */
+.ev-card { padding: 12px 14px; }
+.ev-row { display:flex; align-items:baseline; gap:10px; padding: 5px 0; }
+.ev-time { font-size: 12px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; width: 88px; flex-shrink: 0; }
+.ev-time.allday { color: var(--accent); }
+.ev-title { font-size: 13.5px; font-weight: 600; flex: 1; min-width: 0; }
+.ev-row.past { opacity: .45; }
+.ev-row.past .ev-title { text-decoration: line-through; }
+.ev-row.now { background: var(--primary-light); border-radius: 8px; padding: 5px 8px; margin: 0 -8px; }
+.ev-now-badge { font-size: 10px; font-weight: 800; color: #fff; background: var(--primary); border-radius: 999px; padding: 1px 7px; flex-shrink: 0; }
+.ev-tomorrow { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-top: 6px; border-top: 1px solid var(--border); padding-top: 7px; }
 /* 이번 주 빅록 스트립 */
 .strip-card { padding: 12px 14px; }
 .strip-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 2px; }
@@ -591,6 +602,58 @@ function planNextWeek() {
 }
 function renderAll() { renderToday(); renderWeekly(); renderGoals(); renderRecords(); }
 
+// ═══════════════════ 구글 캘린더 (Apps Script events 엔드포인트) ═══════════════════
+let _events = null;
+try { const _ec = JSON.parse(localStorage.getItem('dp3_events') || 'null'); if (_ec) _events = _ec.events; } catch(e) {}
+async function fetchEvents() {
+  if (!CLOUD_SYNC_URL) return;
+  try {
+    const res = await fetch(CLOUD_SYNC_URL + '?action=events&days=2');
+    const r = await res.json();
+    if (r.status === 'ok' && Array.isArray(r.events)) {
+      _events = r.events;
+      try { localStorage.setItem('dp3_events', JSON.stringify({ at: Date.now(), events: r.events })); } catch(e) {}
+      renderToday();
+    }
+  } catch(e) { /* 백엔드 미지원/오프라인 시 조용히 무시 */ }
+}
+function eventsOnDay(ds) {
+  if (!_events) return [];
+  const noon = new Date(ds + 'T12:00:00');
+  return _events.filter(ev => {
+    const s = new Date(ev.start), e = new Date(ev.end);
+    if (ev.allDay) return noon >= s && noon < e;
+    return dstr(s) === ds;
+  });
+}
+function hhmm(iso) { const d = new Date(iso); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+function eventsCardHtml(td) {
+  if (!_events) return '';
+  const todays = eventsOnDay(td);
+  const tmr = new Date(td + 'T00:00:00'); tmr.setDate(tmr.getDate() + 1);
+  const tmrCnt = eventsOnDay(dstr(tmr)).length;
+  if (!todays.length && !tmrCnt) return '';
+  const now = new Date();
+  todays.sort((a,b) => (a.allDay ? '0' : '1' + a.start).localeCompare(b.allDay ? '0' : '1' + b.start));
+  let rows = '';
+  todays.forEach(ev => {
+    const s = new Date(ev.start), e = new Date(ev.end);
+    const ongoing = !ev.allDay && now >= s && now < e;
+    const past = !ev.allDay && now >= e;
+    rows += `<div class="ev-row ${ongoing?'now':''} ${past?'past':''}">
+      <span class="ev-time ${ev.allDay?'allday':''}">${ev.allDay ? '종일' : hhmm(ev.start) + '–' + hhmm(ev.end)}</span>
+      <span class="ev-title">${esc(ev.title)}</span>
+      ${ongoing ? '<span class="ev-now-badge">진행 중</span>' : ''}
+    </div>`;
+  });
+  if (!todays.length) rows = `<div class="sec-note">오늘 일정이 없습니다</div>`;
+  return `<div class="card ev-card">
+    <h3>📅 오늘 일정 <span class="sec-note">Google 캘린더</span></h3>
+    ${rows}
+    ${tmrCnt ? `<div class="ev-tomorrow">내일 일정 ${tmrCnt}건</div>` : ''}
+  </div>`;
+}
+
 // ═══════════════════ ① 오늘 ═══════════════════
 let addPri = 'A';
 function renderToday() {
@@ -624,6 +687,9 @@ function renderToday() {
     </div>
     <div class="streak-chip">🔥 ${streak}일</div>
   </div>`;
+
+  // 오늘 일정 (구글 캘린더)
+  html += eventsCardHtml(td);
 
   // 일요일 저녁 → 다음 주 나침반 작성 제안
   const nextWs = getWeekStart(new Date()); nextWs.setDate(nextWs.getDate() + 7);
@@ -1342,8 +1408,9 @@ renderAll();
 if (CLOUD_SYNC_URL) {
   setCloud('☁️ 대기 중');
   setTimeout(() => cloudSync(false), 2000);
-  setInterval(() => cloudSync(false), 5*60*1000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) cloudSync(false); });
+  setTimeout(fetchEvents, 2800);
+  setInterval(() => { cloudSync(false); fetchEvents(); }, 5*60*1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { cloudSync(false); fetchEvents(); } });
 } else setCloud('☁️ 클라우드 미연결');
 </script>
 </body>
