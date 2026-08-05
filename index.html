@@ -83,6 +83,12 @@ button { cursor: pointer; }
 .nav-chip:active { background: var(--primary-light); }
 .nav-chip.back { color: var(--primary); border-color: var(--primary-light); }
 .subnav .pgtitle { font-size: 15px; font-weight: 800; margin-left: 4px; }
+/* 오늘 2컬럼 (좌: 나침반·일정 / 우: 투두) */
+.today-cols { display: block; }
+@media (min-width: 768px) {
+  .today-cols { display: grid; grid-template-columns: 5fr 7fr; gap: 16px; align-items: start; }
+  .tc-right .task-group-label:first-child { margin-top: 0; }
+}
 /* 오늘 일정 (구글 캘린더) */
 .ev-card { padding: 12px 14px; }
 .ev-row { display:flex; align-items:baseline; gap:10px; padding: 5px 0; }
@@ -689,9 +695,6 @@ function renderToday() {
     <div class="streak-chip">🔥 ${streak}일</div>
   </div>`;
 
-  // 오늘 일정 (구글 캘린더)
-  html += eventsCardHtml(td);
-
   // 일요일 저녁 → 다음 주 나침반 작성 제안
   const nextWs = getWeekStart(new Date()); nextWs.setDate(nextWs.getDate() + 7);
   const nextWk = getWeekKey(nextWs);
@@ -708,6 +711,10 @@ function renderToday() {
       <span>어제 스트릭이 끊겼어요. 괜찮습니다 — 나침반에서 다시 방향을 잡으면 됩니다.</span>
       <button onclick="goThisWeek();showTab('weekly')">🧭 재시작</button>
     </div>`;
+
+  // ── 2컬럼 시작: 좌측 = 오늘 일정 + 나침반 스트립 ──
+  html += `<div class="today-cols"><div class="tc-left">`;
+  html += eventsCardHtml(td);
 
   // ── 이번 주 빅록 스트립 (주간 나침반 요약) ──
   const wkRocks = D.weeklyGoals.filter(g => g.week === wk);
@@ -741,6 +748,9 @@ function renderToday() {
     else if (doneRocks.length) html += `<div class="strip-done-note">✓ ${doneRocks.length}개 완료</div>`;
     html += `</div>`;
   }
+
+  // ── 우측 = 투두리스트 + 회고 ──
+  html += `</div><div class="tc-right">`;
 
   const groups = [['A','A — 반드시 오늘'],['B','B — 해야 할 일'],['C','C — 하면 좋은 일']];
   let listHtml = '';
@@ -783,7 +793,8 @@ function renderToday() {
       <span class="reflect-saved" id="reflectSaved">${refl && refl.text ? '기록됨 ✓' : ''}</span>
       <button class="mini-btn send" onclick="saveReflection()">저장</button>
     </div>
-  </div>`;
+  </div>
+  </div></div>`;
   wrap.innerHTML = html;
 }
 function shorten(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
