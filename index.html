@@ -79,7 +79,16 @@ button { cursor: pointer; }
   background:#fff; border:1px solid var(--border); border-radius:999px;
   padding: 8px 14px; font-size: 12.5px; font-weight:700; color: var(--text-2);
   box-shadow: var(--shadow); display:inline-flex; align-items:center; gap:5px;
+  text-decoration: none;
 }
+.nav-chip.ext { color: var(--primary); }
+.subnav .spacer { flex: 1; }
+/* 어제 돌아보기 */
+.yday-summary { font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
+.yday-refl { font-size: 12.5px; color: var(--muted); font-style: italic; margin-bottom: 6px; }
+.yday-row { display:flex; align-items:center; gap:8px; padding: 6px 0; border-top: 1px solid var(--border); }
+.yday-row:first-of-type { border-top: none; }
+.yday-title { flex:1; min-width:0; font-size: 13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .nav-chip:active { background: var(--primary-light); }
 .nav-chip.back { color: var(--primary); border-color: var(--primary-light); }
 .subnav .pgtitle { font-size: 15px; font-weight: 800; margin-left: 4px; }
@@ -496,6 +505,15 @@ let _dirty = false;
   persist();
 })();
 function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(D)); } catch(e) { console.error(e); } }
+// ─── 로컬 자동 백업 (하루 1회, 최근 7일 보관) ───
+(function dailyBackup() {
+  try {
+    const k = 'dp3_bak_' + todayStr();
+    if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(D));
+    const baks = Object.keys(localStorage).filter(x => x.startsWith('dp3_bak_')).sort();
+    while (baks.length > 7) localStorage.removeItem(baks.shift());
+  } catch(e) {}
+})();
 function commit() {
   D._modified = new Date().toISOString();
   _dirty = true; persist();
@@ -686,6 +704,9 @@ function renderToday() {
     <button class="nav-chip" onclick="goThisWeek();showTab('weekly')">🧭 나침반</button>
     <button class="nav-chip" onclick="showTab('goals')">🎯 목표</button>
     <button class="nav-chip" onclick="showTab('records')">📊 기록</button>
+    <span class="spacer"></span>
+    <a class="nav-chip ext" href="https://calendar.google.com/" target="_blank" rel="noopener">📅 구글캘린더</a>
+    <a class="nav-chip ext" href="https://gw.seoil.ac.kr/" target="_blank" rel="noopener">🏫 그룹웨어</a>
   </div>
   <div class="today-head">
     <div>
@@ -751,6 +772,29 @@ function renderToday() {
 
   // ── 우측 = 투두리스트 + 회고 ──
   html += `</div><div class="tc-right">`;
+
+  // 어제 돌아보기
+  const ydD = new Date(); ydD.setDate(ydD.getDate() - 1);
+  const yds = dstr(ydD);
+  const yTasks = tasksOf(yds);
+  const yUndone = yTasks.filter(t => !t.done);
+  const yDoneCnt = yTasks.length - yUndone.length;
+  const yRef = reflectionOf(yds);
+  if (yTasks.length || (yRef && yRef.text)) {
+    html += `<div class="card strip-card">
+      <h3>🌗 어제 <span class="sec-note">${(ydD.getMonth()+1)}/${ydD.getDate()} (${DOW[(ydD.getDay()+6)%7]})</span></h3>
+      <div class="yday-summary">✓ ${yDoneCnt}개 완료${yUndone.length ? ` · 미완료 <b>${yUndone.length}개</b>` : ' — 전부 끝냈습니다 👏'}${achievedOn(yds) ? ' · 🎉 달성' : ''}</div>
+      ${yRef && yRef.text ? `<div class="yday-refl">“${esc(yRef.text)}”</div>` : ''}`;
+    yUndone.forEach(t => {
+      html += `<div class="yday-row">
+        <span class="pri-badge pri-${t.priority}" style="width:22px;height:22px;font-size:11px">${t.priority}</span>
+        <span class="yday-title">${esc(t.title)}</span>
+        <button class="mini-btn send" onclick="moveTaskToToday('${t.id}')">오늘로</button>
+        <button class="x-btn" id="ydel_${t.id}" onclick="dropYesterdayTask('${t.id}')" style="font-size:13px">✕</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
 
   const groups = [['A','A — 반드시 오늘'],['B','B — 해야 할 일'],['C','C — 하면 좋은 일']];
   let listHtml = '';
@@ -835,6 +879,33 @@ function delTask(id) {
   }
   const t = D.dailyTasks.find(t=>t.id===id);
   D.dailyTasks = D.dailyTasks.filter(t => t.id !== id);
+  if (t) recordAchievement(t.date);
+  commit(); renderToday();
+}
+function moveTaskToToday(id) {
+  const t = D.dailyTasks.find(t => t.id === id); if (!t) return;
+  const td = todayStr();
+  let pri = t.priority;
+  if (pri === 'A' && tasksOf(td).filter(x => x.priority === 'A').length >= 3) {
+    pri = 'B';
+    showToast('A가 가득 차서 오늘의 B로 이동했습니다');
+  } else {
+    showToast(`어제 항목을 오늘의 ${pri}로 이동했습니다`);
+  }
+  const oldDate = t.date;
+  t.date = td; t.priority = pri;
+  recordAchievement(oldDate);
+  commit(); renderToday();
+}
+function dropYesterdayTask(id) {
+  const btn = document.getElementById('ydel_' + id);
+  if (btn && !btn.classList.contains('confirm')) {
+    btn.classList.add('confirm'); btn.textContent = '삭제?';
+    setTimeout(() => { if (btn.isConnected) { btn.classList.remove('confirm'); btn.textContent = '✕'; } }, 2500);
+    return;
+  }
+  const t = D.dailyTasks.find(t => t.id === id);
+  D.dailyTasks = D.dailyTasks.filter(x => x.id !== id);
   if (t) recordAchievement(t.date);
   commit(); renderToday();
 }
@@ -1429,8 +1500,33 @@ function openDataModal() {
     <button class="m-btn" onclick="cloudSync(true);closeModal()">☁️ <span>지금 동기화<small>Google Drive와 즉시 동기화</small></span></button>
     <button class="m-btn" onclick="exportJSON()">📤 <span>내보내기<small>JSON 파일 백업 (v3 포맷)</small></span></button>
     <button class="m-btn" onclick="document.getElementById('importFile').click()">📥 <span>가져오기<small>v2/v3 JSON 파일 불러오기</small></span></button>
+    <button class="m-btn" onclick="openRestoreModal()">🛟 <span>백업 복원<small>이 기기의 자동 백업(최근 7일)에서 되돌리기</small></span></button>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importJSON(this)">
     <button class="m-cancel" onclick="closeModal()">닫기</button>`);
+}
+function openRestoreModal() {
+  const baks = Object.keys(localStorage).filter(x => x.startsWith('dp3_bak_') && x !== 'dp3_bak_prerestore').sort().reverse();
+  if (!baks.length) { showToast('저장된 로컬 백업이 없습니다'); return; }
+  const rows = baks.map(k => {
+    let info = '';
+    try { const d = JSON.parse(localStorage.getItem(k)); info = `빅록 ${(d.weeklyGoals||[]).length} · 할일 ${(d.dailyTasks||[]).length} · 회고 ${(d.reflections||[]).length}`; } catch(e) {}
+    return `<button class="m-btn" onclick="restoreBackup('${k}')">🗓 <span>${k.slice(8)}<small>${info}</small></span></button>`;
+  }).join('');
+  openModal(`<h3>🛟 백업 복원</h3>
+    <div class="sec-note" style="margin-bottom:10px">복원 직전 상태도 자동 보관되므로 안전하게 되돌릴 수 있습니다.</div>
+    ${rows}
+    <button class="m-cancel" onclick="closeModal()">취소</button>`);
+}
+function restoreBackup(key) {
+  try {
+    const raw = localStorage.getItem(key); if (!raw) return;
+    localStorage.setItem('dp3_bak_prerestore', JSON.stringify(D));
+    D = normalize(JSON.parse(raw));
+    D._modified = new Date().toISOString();
+    persist(); _dirty = true;
+    closeModal(); renderAll();
+    showToast('🛟 ' + key.slice(8) + ' 백업으로 복원했습니다');
+  } catch(e) { showToast('복원 실패: ' + e.message); }
 }
 function exportJSON() {
   const payload = JSON.parse(JSON.stringify(D));
