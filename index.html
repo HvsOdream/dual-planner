@@ -35,7 +35,7 @@ html { -webkit-text-size-adjust: 100%; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Segoe UI', 'Noto Sans KR', sans-serif;
   background: var(--bg); color: var(--text);
-  min-height: 100vh; padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  min-height: 100vh; padding-bottom: calc(28px + env(safe-area-inset-bottom));
   -webkit-tap-highlight-color: transparent;
   line-height: 1.45;
 }
@@ -73,16 +73,37 @@ button { cursor: pointer; }
 .card h3 { font-size: 13px; font-weight: 800; color: var(--primary); margin-bottom: 10px; display:flex; align-items:center; gap:6px; }
 .sec-note { font-size: 11px; color: var(--muted); font-weight: 500; }
 
-/* ─── Tab bar ─── */
-.tab-bar {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: #fff; border-top: 1px solid var(--border);
-  display: flex; z-index: 100; padding-bottom: env(safe-area-inset-bottom);
+/* ─── Sub navigation (오늘 = 홈) ─── */
+.subnav { display:flex; gap:6px; margin: 0 0 12px; align-items:center; flex-wrap:wrap; }
+.nav-chip {
+  background:#fff; border:1px solid var(--border); border-radius:999px;
+  padding: 8px 14px; font-size: 12.5px; font-weight:700; color: var(--text-2);
+  box-shadow: var(--shadow); display:inline-flex; align-items:center; gap:5px;
 }
-.tab-item { flex:1; padding: 8px 0 6px; text-align:center; color: var(--muted); border:none; background:none; }
-.tab-item.active { color: var(--primary); }
-.tab-icon { font-size: 21px; display:block; }
-.tab-label { font-size: 10px; margin-top: 2px; font-weight: 700; }
+.nav-chip:active { background: var(--primary-light); }
+.nav-chip.back { color: var(--primary); border-color: var(--primary-light); }
+.subnav .pgtitle { font-size: 15px; font-weight: 800; margin-left: 4px; }
+/* 이번 주 빅록 스트립 */
+.strip-card { padding: 12px 14px; }
+.strip-head { display:flex; align-items:center; justify-content:space-between; margin-bottom: 2px; }
+.strip-head h3 { margin-bottom: 0; }
+.strip-theme { font-size: 12.5px; color: var(--text-2); font-style: italic; margin: 4px 0 6px; }
+.strip-row { display:flex; align-items:center; gap:8px; padding: 6px 0; border-top: 1px solid var(--border); }
+.strip-row:first-of-type { border-top: none; }
+.strip-title { flex:1; min-width:0; font-size: 13px; font-weight: 600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.strip-done-note { font-size: 11.5px; color: var(--good); font-weight: 700; padding-top: 6px; }
+.strip-sent { font-size: 11px; color: var(--good); font-weight: 800; white-space:nowrap; }
+.strip-cta {
+  width:100%; background: var(--primary); color:#fff; border:none; border-radius: 10px;
+  padding: 11px; font-size: 13.5px; font-weight: 800; margin-top: 6px;
+}
+.sunday-card {
+  background: linear-gradient(135deg, #3d2c63, #5b4491); color:#fff;
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px;
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  box-shadow: var(--shadow); font-size: 13.5px; font-weight: 600;
+}
+.sunday-card button { background: rgba(255,255,255,.18); color:#fff; border:1px solid rgba(255,255,255,.3); border-radius: 9px; padding: 8px 12px; font-size: 12.5px; font-weight:800; white-space:nowrap; }
 
 /* ─── 오늘 ─── */
 .today-head { display:flex; align-items:flex-end; justify-content:space-between; margin: 4px 2px 12px; }
@@ -351,6 +372,7 @@ button { cursor: pointer; }
 
 <!-- ═══════ ② 주간 나침반 ═══════ -->
 <div class="page" id="page-weekly"><div class="wrap">
+  <div class="subnav"><button class="nav-chip back" onclick="showTab('today')">‹ 오늘</button><span class="pgtitle">🧭 주간 나침반</span></div>
   <div class="week-nav">
     <button class="wnav-btn" onclick="moveWeek(-1)">‹</button>
     <div class="wlabel" id="weekLabel"></div>
@@ -369,13 +391,6 @@ button { cursor: pointer; }
 
 <!-- ═══════ ④ 기록 ═══════ -->
 <div class="page" id="page-records"><div class="wrap" id="recordsWrap"></div></div>
-
-<div class="tab-bar">
-  <button class="tab-item active" data-tab="today" onclick="showTab('today')"><span class="tab-icon">☀️</span><span class="tab-label">오늘</span></button>
-  <button class="tab-item" data-tab="weekly" onclick="showTab('weekly')"><span class="tab-icon">🧭</span><span class="tab-label">주간 나침반</span></button>
-  <button class="tab-item" data-tab="goals" onclick="showTab('goals')"><span class="tab-icon">🎯</span><span class="tab-label">목표</span></button>
-  <button class="tab-item" data-tab="records" onclick="showTab('records')"><span class="tab-icon">📊</span><span class="tab-label">기록</span></button>
-</div>
 
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
@@ -566,9 +581,13 @@ function compassDone(week) {
 function showTab(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
-  document.querySelectorAll('.tab-item').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   window.scrollTo(0, 0);
   renderAll();
+}
+function planNextWeek() {
+  curWeekStart = getWeekStart(new Date());
+  curWeekStart.setDate(curWeekStart.getDate() + 7);
+  showTab('weekly');
 }
 function renderAll() { renderToday(); renderWeekly(); renderGoals(); renderRecords(); }
 
@@ -593,6 +612,11 @@ function renderToday() {
   const broken = streak === 0 && !achievedOn(dstr(y1)) && achievedOn(dstr(y2));
 
   let html = `
+  <div class="subnav">
+    <button class="nav-chip" onclick="goThisWeek();showTab('weekly')">🧭 나침반</button>
+    <button class="nav-chip" onclick="showTab('goals')">🎯 목표</button>
+    <button class="nav-chip" onclick="showTab('records')">📊 기록</button>
+  </div>
   <div class="today-head">
     <div>
       <div class="today-date">${now.getMonth()+1}월 ${now.getDate()}일 (${DOW[(now.getDay()+6)%7]})</div>
@@ -601,12 +625,55 @@ function renderToday() {
     <div class="streak-chip">🔥 ${streak}일</div>
   </div>`;
 
+  // 일요일 저녁 → 다음 주 나침반 작성 제안
+  const nextWs = getWeekStart(new Date()); nextWs.setDate(nextWs.getDate() + 7);
+  const nextWk = getWeekKey(nextWs);
+  if (now.getDay() === 0 && now.getHours() >= 17 && !compassDone(nextWk)) {
+    html += `<div class="sunday-card">
+      <span>🌙 일요일 저녁입니다. 다음 주 나침반을 세울 시간이에요.</span>
+      <button onclick="planNextWeek()">작성하기</button>
+    </div>`;
+  }
+
   if (ach) html += `<div class="achieved-banner">🎉 오늘 달성! A 미션을 모두 완료했습니다.</div>`;
   if (broken) html += `
     <div class="recover-card">
       <span>어제 스트릭이 끊겼어요. 괜찮습니다 — 나침반에서 다시 방향을 잡으면 됩니다.</span>
-      <button onclick="showTab('weekly')">🧭 재시작</button>
+      <button onclick="goThisWeek();showTab('weekly')">🧭 재시작</button>
     </div>`;
+
+  // ── 이번 주 빅록 스트립 (주간 나침반 요약) ──
+  const wkRocks = D.weeklyGoals.filter(g => g.week === wk);
+  const wkTheme = (D.weeklyCompass[wk] || {}).theme || '';
+  if (!wkRocks.length && !wkTheme) {
+    html += `<div class="card strip-card">
+      <h3>🧭 이번 주 나침반</h3>
+      <div class="sec-note">아직 이번 주 나침반이 비어 있습니다. 방향을 먼저 정하면 오늘이 명확해집니다.</div>
+      <button class="strip-cta" onclick="goThisWeek();showTab('weekly')">이번 주 나침반 작성하기</button>
+    </div>`;
+  } else {
+    const doneRocks = wkRocks.filter(g => g.done);
+    const undoneRocks = wkRocks.filter(g => !g.done);
+    html += `<div class="card strip-card">
+      <div class="strip-head">
+        <h3>🧭 이번 주 빅록 <span class="sec-note">${doneRocks.length}/${wkRocks.length}</span></h3>
+        <button class="mini-btn" onclick="goThisWeek();showTab('weekly')">자세히 ›</button>
+      </div>
+      ${wkTheme ? `<div class="strip-theme">“${esc(wkTheme)}”</div>` : ''}`;
+    undoneRocks.forEach(g => {
+      const role = D.roles.find(r => r.id === g.roleId);
+      const sentToday = D.dailyTasks.some(t => t.date === td && t.weeklyGoalId === g.id);
+      html += `<div class="strip-row">
+        <span>${role ? esc(role.icon) : '🪨'}</span>
+        <span class="strip-title">${esc(g.title)}</span>
+        ${g.carryCount ? `<span class="chip warn">↻${g.carryCount}</span>` : ''}
+        ${sentToday ? `<span class="strip-sent">✓ 오늘</span>` : `<button class="mini-btn send" onclick="sendToToday('${g.id}')">오늘로</button>`}
+      </div>`;
+    });
+    if (!undoneRocks.length) html += `<div class="strip-done-note">✓ 이번 주 빅록을 모두 완료했습니다!</div>`;
+    else if (doneRocks.length) html += `<div class="strip-done-note">✓ ${doneRocks.length}개 완료</div>`;
+    html += `</div>`;
+  }
 
   const groups = [['A','A — 반드시 오늘'],['B','B — 해야 할 일'],['C','C — 하면 좋은 일']];
   let listHtml = '';
@@ -880,7 +947,7 @@ function sendToToday(id) {
   D.dailyTasks.push({ id: uid('dt_'), date: td, priority: pri, title: g.title, done:false, weeklyGoalId: id, roleId: g.roleId });
   commit();
   showToast(`오늘의 ${pri}로 보냈습니다 ${pri==='A' ? '('+(aCnt+1)+'/3)' : '(A가 가득 차서 B로)'}`);
-  renderWeekly();
+  renderAll();
 }
 function carryOver(id) {
   const g = D.weeklyGoals.find(g => g.id === id); if (!g) return;
@@ -930,6 +997,7 @@ function renderGoals() {
   const curMonth = todayStr().slice(0,7);
   const curWk = getWeekKey(getWeekStart(new Date()));
   let html = `
+  <div class="subnav"><button class="nav-chip back" onclick="showTab('today')">‹ 오늘</button><span class="pgtitle">🎯 목표</span></div>
   <div class="vision-card">
     <div class="v-label">VISION</div>
     <div class="v-text">${esc(D.vision || '비전 선언문을 작성해보세요')}</div>
@@ -1158,7 +1226,9 @@ function renderRecords() {
     if (achievedOn(ds)) monthAch++;
   }
 
-  let html = `<div class="stat-grid">
+  let html = `
+  <div class="subnav"><button class="nav-chip back" onclick="showTab('today')">‹ 오늘</button><span class="pgtitle">📊 기록</span></div>
+  <div class="stat-grid">
     <div class="stat-tile"><div class="lbl">🔥 현재 스트릭</div><div class="val">${currentStreak()}일</div><div class="sub">최고 ${bestStreak()}일</div></div>
     <div class="stat-tile"><div class="lbl">✅ A 완료율</div><div class="val">${aRate}%</div><div class="sub">최근 30일 (${aDone}/${aTot})</div></div>
     <div class="stat-tile"><div class="lbl">🧭 나침반 실행률</div><div class="val">${compassRate}%</div><div class="sub">최근 12주 중 ${compassRun}주</div></div>
