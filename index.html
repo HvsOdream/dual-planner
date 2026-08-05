@@ -227,6 +227,7 @@ button { cursor: pointer; }
   font-size: 11px; font-weight: 700; padding: 5px 8px; color: var(--text-2); white-space:nowrap;
 }
 .mini-btn.send { color: var(--primary); border-color: var(--primary-light); background: var(--primary-light); }
+.mini-btn.confirm { color: var(--pa); border-color: var(--pa); }
 .wg-add { display:flex; gap:6px; margin-top: 4px; }
 .wg-add input { flex:1; min-width:0; border:1px solid var(--border); border-radius: 9px; padding: 7px 10px; font-size: 13px; background:#fff; }
 .wg-add button { background: var(--primary); color:#fff; border:none; border-radius: 9px; padding: 0 12px; font-size: 12px; font-weight:700; }
@@ -871,7 +872,7 @@ function weekPanelHtml(wk, ws, readonly) {
     <h3>✍️ 이번 주의 한 문장</h3>
     ${readonly
       ? `<div class="pre-text">${esc(c.theme || '—')}</div>`
-      : `<input class="one-input" value="${esc(c.theme||'')}" placeholder="이번 주를 한 문장으로 정의하면?" onchange="setTheme('${wk}', this.value)">`}
+      : `<input class="one-input" id="cmp_theme" value="${esc(c.theme||'')}" placeholder="이번 주를 한 문장으로 정의하면?" onchange="setTheme('${wk}', this.value)">`}
   </div>`;
 
   // 톱날 갈기
@@ -880,13 +881,13 @@ function weekPanelHtml(wk, ws, readonly) {
     html += `<div class="saw-item"><div class="lbl">${a.icon} ${a.label}</div>
       ${readonly
         ? `<div style="font-size:13px">${esc(saw[a.key] || '—')}</div>`
-        : `<input value="${esc(saw[a.key]||'')}" placeholder="예: 러닝 3회" onchange="setSaw('${wk}','${a.key}',this.value)">`}
+        : `<input id="cmp_saw_${a.key}" value="${esc(saw[a.key]||'')}" placeholder="예: 러닝 3회" onchange="setSaw('${wk}','${a.key}',this.value)">`}
     </div>`;
   });
   html += `</div></div>`;
 
   // 역할별 빅록
-  html += `<div class="card"><h3>🪨 역할별 빅록 <span class="sec-note">역할마다 가장 중요한 하나</span></h3>`;
+  html += `<div class="card"><h3>🪨 역할별 빅록 <span class="sec-note">역할마다 가장 중요한 하나</span>${readonly ? '' : '<span style="flex:1"></span><button class="mini-btn" onclick="manageRoles()">👥 역할 관리</button>'}</h3>`;
   D.roles.forEach(role => {
     const rocks = D.weeklyGoals.filter(g => g.week === wk && g.roleId === role.id);
     html += `<div class="role-block">
@@ -925,6 +926,11 @@ function weekPanelHtml(wk, ws, readonly) {
     html += `</div>`;
   });
   html += `</div>`;
+
+  // 나침반 저장 버튼 (자동 저장이지만 확인용)
+  if (!readonly) {
+    html += `<button class="strip-cta" style="margin:0 0 12px" onclick="saveCompass('${wk}')">🧭 나침반 저장</button>`;
+  }
 
   // 주간 달성판
   html += `<div class="card"><h3>📅 주간 달성판</h3><div class="dot-row">`;
@@ -978,6 +984,47 @@ function monthGoalSelect(g) {
 }
 function setTheme(wk, v) { compassOf(wk).theme = v.trim(); commit(); }
 function setSaw(wk, key, v) { compassOf(wk).saw[key] = v.trim(); commit(); }
+function saveCompass(wk) {
+  const c = compassOf(wk);
+  const t = document.getElementById('cmp_theme'); if (t) c.theme = t.value.trim();
+  SAW_AREAS.forEach(a => { const el = document.getElementById('cmp_saw_' + a.key); if (el) c.saw[a.key] = el.value.trim(); });
+  commit();
+  showToast('🧭 나침반 저장 완료');
+  renderWeekly();
+}
+// ─── 역할 관리 ───
+function manageRoles() {
+  const rows = D.roles.map((r, i) => `
+    <div class="role-edit-row">
+      <span>${esc(r.icon)}</span><span class="nm">${esc(r.name)}</span>
+      <button class="mini-btn" onclick="moveRole('${r.id}',-1)" ${i===0?'disabled style="opacity:.3"':''}>↑</button>
+      <button class="mini-btn" onclick="moveRole('${r.id}',1)" ${i===D.roles.length-1?'disabled style="opacity:.3"':''}>↓</button>
+      <button class="mini-btn" onclick="editRole('${r.id}')">✎</button>
+      <button class="mini-btn" id="rdel_${r.id}" onclick="removeRole('${r.id}')" style="color:var(--pa)">✕</button>
+    </div>`).join('');
+  openModal(`<h3>👥 역할 관리</h3>${rows}
+    <button class="m-btn" style="margin-top:12px" onclick="editRole(null)">➕ <span>역할 추가</span></button>
+    <button class="m-cancel" onclick="closeModal();renderAll()">닫기</button>`);
+}
+function moveRole(id, d) {
+  const i = D.roles.findIndex(r => r.id === id);
+  const j = i + d;
+  if (i < 0 || j < 0 || j >= D.roles.length) return;
+  [D.roles[i], D.roles[j]] = [D.roles[j], D.roles[i]];
+  commit(); manageRoles();
+}
+function removeRole(id) {
+  const btn = document.getElementById('rdel_' + id);
+  const cnt = D.weeklyGoals.filter(g => g.roleId === id).length;
+  if (btn && !btn.classList.contains('confirm')) {
+    btn.classList.add('confirm');
+    btn.textContent = cnt ? `빅록 ${cnt}개 포함 삭제?` : '삭제?';
+    setTimeout(() => { if (btn.isConnected) { btn.classList.remove('confirm'); btn.textContent = '✕'; } }, 3000);
+    return;
+  }
+  D.roles = D.roles.filter(r => r.id !== id);
+  commit(); manageRoles();
+}
 function addRock(wk, roleId) {
   const inp = document.getElementById('wgadd_' + roleId);
   const title = inp.value.trim(); if (!title) return;
