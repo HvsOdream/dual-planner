@@ -627,6 +627,82 @@ function planNextWeek() {
 }
 function renderAll() { renderToday(); renderWeekly(); renderGoals(); renderRecords(); }
 
+// ═══════════════════ AI 추천 (일요일 정기 생성 → Drive planner_suggestions.json) ═══════════════════
+let _sugg = null;
+try { const _sc = JSON.parse(localStorage.getItem('dp3_sugg') || 'null'); if (_sc) _sugg = _sc; } catch(e) {}
+async function fetchSuggestions() {
+  if (!CLOUD_SYNC_URL) return;
+  try {
+    const res = await fetch(CLOUD_SYNC_URL + '?action=suggestions');
+    const r = await res.json();
+    if (r.status === 'ok' && r.data) {
+      _sugg = r.data;
+      try { localStorage.setItem('dp3_sugg', JSON.stringify(r.data)); } catch(e) {}
+      renderWeekly();
+    }
+  } catch(e) {}
+}
+function adoptSugg(idx) {
+  if (!_sugg || !_sugg.weekly || !_sugg.weekly[idx]) return;
+  const s = _sugg.weekly[idx];
+  const role = D.roles.find(r => r.name === s.roleName)
+    || D.roles.find(r => s.roleName && (r.name.includes(s.roleName) || s.roleName.includes(r.name)))
+    || D.roles[0];
+  if (!role) { showToast('역할이 없습니다'); return; }
+  D.weeklyGoals.push({ id: uid('wg_'), week: _sugg.forWeek, roleId: role.id, title: s.title, done:false, deadlineDate:'', monthlyGoalId:null, carriedFrom:null, carryCount:0 });
+  commit(); showToast('🤖 추천을 빅록으로 채택했습니다');
+  renderWeekly();
+}
+function adoptSuggMonthly(idx) {
+  if (!_sugg || !_sugg.monthly || !_sugg.monthly[idx]) return;
+  const s = _sugg.monthly[idx];
+  const ag = D.annualGoals.find(a => a.tag === s.tag);
+  if (!ag) { showToast('연결할 연간 목표(태그: ' + (s.tag||'?') + ')를 찾지 못했습니다'); return; }
+  D.monthlyGoals.push({ id: uid('mg_'), month: s.month, goalId: ag.id, title: s.title, progress: 0 });
+  commit(); showToast('🤖 월간 목표로 채택했습니다');
+  renderWeekly();
+}
+function suggCardHtml(wk) {
+  if (!D.annualGoals.length) {
+    return `<div class="card strip-card">
+      <h3>🤖 AI 추천</h3>
+      <div class="sec-note">연간 목표(큰 목표)가 아직 없습니다. 큰 목표를 먼저 정하면 매주 일요일 오후, 목표에 맞는 월간·주간 빅록 추천이 도착합니다.</div>
+      <button class="strip-cta" onclick="showTab('goals')">🎯 큰 목표부터 작성하기</button>
+    </div>`;
+  }
+  if (!_sugg || _sugg.forWeek !== wk) {
+    return `<div class="card strip-card"><h3>🤖 AI 추천</h3>
+      <div class="sec-note">이 주에 대한 추천이 아직 없습니다. 매주 일요일 오후 4시에 연간 목표·최근 진행 상황을 바탕으로 새 추천이 도착합니다.</div></div>`;
+  }
+  let html = `<div class="card strip-card"><h3>🤖 AI 추천 <span class="sec-note">${esc(_sugg.forWeek)} · 연간 목표 기반</span></h3>`;
+  (_sugg.weekly || []).forEach((s, i) => {
+    const adopted = D.weeklyGoals.some(g => g.week === _sugg.forWeek && g.title === s.title);
+    html += `<div class="strip-row" style="align-items:flex-start">
+      <div class="t-main">
+        <div class="t-title" style="font-size:13px">${esc(s.roleName || '')} · ${esc(s.title)}</div>
+        ${s.why ? `<div class="sec-note" style="margin-top:2px">${esc(s.why)}</div>` : ''}
+      </div>
+      ${adopted ? `<span class="strip-sent">✓ 채택됨</span>` : `<button class="mini-btn send" onclick="adoptSugg(${i})">채택</button>`}
+    </div>`;
+  });
+  const mos = (_sugg.monthly || []);
+  if (mos.length) {
+    html += `<div class="task-group-label" style="margin:10px 0 4px">월간 목표 추천</div>`;
+    mos.forEach((s, i) => {
+      const adopted = D.monthlyGoals.some(m => m.month === s.month && m.title === s.title);
+      html += `<div class="strip-row" style="align-items:flex-start">
+        <div class="t-main">
+          <div class="t-title" style="font-size:13px">[${esc(s.tag||'')}] ${esc(s.title)} <span class="sec-note">${esc(s.month||'')}</span></div>
+          ${s.why ? `<div class="sec-note" style="margin-top:2px">${esc(s.why)}</div>` : ''}
+        </div>
+        ${adopted ? `<span class="strip-sent">✓ 채택됨</span>` : `<button class="mini-btn send" onclick="adoptSuggMonthly(${i})">채택</button>`}
+      </div>`;
+    });
+  }
+  html += `</div>`;
+  return html;
+}
+
 // ═══════════════════ 구글 캘린더 (Apps Script events 엔드포인트) ═══════════════════
 let _events = null;
 try { const _ec = JSON.parse(localStorage.getItem('dp3_events') || 'null'); if (_ec) _events = _ec.events; } catch(e) {}
@@ -1008,6 +1084,9 @@ function weekPanelHtml(wk, ws, readonly) {
     html += `</div>`;
   });
   html += `</div>`;
+
+  // AI 추천 카드
+  if (!readonly) html += suggCardHtml(wk);
 
   // 나침반 저장 버튼 (자동 저장이지만 확인용)
   if (!readonly) {
@@ -1563,8 +1642,9 @@ if (CLOUD_SYNC_URL) {
   setCloud('☁️ 대기 중');
   setTimeout(() => cloudSync(false), 2000);
   setTimeout(fetchEvents, 2800);
-  setInterval(() => { cloudSync(false); fetchEvents(); }, 5*60*1000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { cloudSync(false); fetchEvents(); } });
+  setTimeout(fetchSuggestions, 3500);
+  setInterval(() => { cloudSync(false); fetchEvents(); fetchSuggestions(); }, 5*60*1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { cloudSync(false); fetchEvents(); fetchSuggestions(); } });
 } else setCloud('☁️ 클라우드 미연결');
 </script>
 </body>
