@@ -357,7 +357,13 @@ button { cursor: pointer; }
   background:#fff; border-radius: 18px 18px 0 0; width:100%; max-width: 480px;
   padding: 20px 18px calc(18px + env(safe-area-inset-bottom)); max-height: 85vh; overflow-y: auto;
 }
+.modal.wide { max-width: 880px; }
 @media (min-width: 768px) { .modal { border-radius: 18px; } }
+/* 잉크 (애플펜슬) */
+#inkCanvas { display:block; width:100%; touch-action:none; border:1px solid var(--border); border-radius:12px; background:#fff; cursor: crosshair; }
+.ink-view { background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; cursor:pointer; }
+.ink-view svg { display:block; width:100%; height:auto; }
+.ink-tools { display:flex; gap:6px; margin-top:10px; align-items:center; font-size:11.5px; color:var(--text-2); }
 .modal h3 { font-size: 16px; font-weight: 800; margin-bottom: 14px; color: var(--primary); }
 .modal .m-btn {
   display:flex; align-items:center; gap:10px; width: 100%; text-align:left;
@@ -582,7 +588,7 @@ async function cloudSync(manual) {
       // 완전히 빈 나침반 엔트리는 비교에서 제외 (렌더링 부산물 호환)
       const wc = {};
       Object.entries(c.weeklyCompass || {}).forEach(([w, v]) => {
-        if ((v.theme || '').trim() || Object.values(v.saw || {}).some(s => (s || '').trim())) wc[w] = v;
+        if ((v.theme || '').trim() || Object.values(v.saw || {}).some(s => (s || '').trim()) || (v.ink && v.ink.strokes && v.ink.strokes.length)) wc[w] = v;
       });
       c.weeklyCompass = wc;
       return stableStr(c);
@@ -988,9 +994,13 @@ function renderToday() {
 
   <div class="card reflect-box" style="margin-top:16px">
     <h3>🌙 저녁 회고 <span class="sec-note">한 줄이면 충분합니다</span></h3>
+    ${refl && refl.ink && refl.ink.strokes && refl.ink.strokes.length
+      ? `<div class="ink-view" style="margin-bottom:8px" onclick="openInkPad('reflect','${td}')">${inkSvg(refl.ink)}</div>` : ''}
     <textarea id="reflectInput" rows="2" placeholder="오늘 하루는 어땠나요?">${esc(refl ? refl.text : '')}</textarea>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-      <span class="reflect-saved" id="reflectSaved">${refl && refl.text ? '기록됨 ✓' : ''}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:6px">
+      <span class="reflect-saved" id="reflectSaved">${refl && (refl.text || (refl.ink && refl.ink.strokes && refl.ink.strokes.length)) ? '기록됨 ✓' : ''}</span>
+      <span style="flex:1"></span>
+      <button class="mini-btn" onclick="openInkPad('reflect','${td}')">✏️ 손글씨</button>
       <button class="mini-btn send" onclick="saveReflection()">저장</button>
     </div>
   </div>
@@ -1113,6 +1123,18 @@ function weekPanelHtml(wk, ws, readonly) {
       ? `<div class="pre-text">${esc(c.theme || '—')}</div>`
       : `<input class="one-input" id="cmp_theme" value="${esc(c.theme||'')}" placeholder="이번 주를 한 문장으로 정의하면?" onchange="setTheme('${wk}', this.value)">`}
   </div>`;
+
+  // 생각 패드 (애플펜슬)
+  const inkC = (D.weeklyCompass[wk] || {}).ink;
+  const hasInk = inkC && inkC.strokes && inkC.strokes.length;
+  if (!readonly || hasInk) {
+    html += `<div class="card">
+      <h3>✏️ 생각 패드 <span class="sec-note">펜슬로 생각 정리</span>${readonly ? '' : `<span style="flex:1"></span><button class="mini-btn" onclick="openInkPad('compass','${wk}')">${hasInk ? '수정' : '열기'}</button>`}</h3>
+      ${hasInk
+        ? `<div class="ink-view" ${readonly ? '' : `onclick="openInkPad('compass','${wk}')"`}>${inkSvg(inkC)}</div>`
+        : (readonly ? '' : `<div class="sec-note">빅록을 정하기 전, 머릿속을 자유롭게 비워보세요.</div>`)}
+    </div>`;
+  }
 
   // 톱날 갈기
   html += `<div class="card"><h3>🪚 톱날 갈기 <span class="sec-note">나를 회복시키는 4영역</span></h3><div class="saw-grid">`;
@@ -1529,7 +1551,112 @@ function delMonthlyGoal(id) {
 }
 
 // ═══════════════════ 모달 (공용 폼) ═══════════════════
-function openModal(html) { document.getElementById('modalRoot').innerHTML = `<div class="modal-ov" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`; }
+function openModal(html, wide) { document.getElementById('modalRoot').innerHTML = `<div class="modal-ov" onclick="if(event.target===this)closeModal()"><div class="modal${wide?' wide':''}">${html}</div></div>`; }
+// ═══════════════════ 잉크 (애플펜슬 손글씨) ═══════════════════
+let _inkS = null;
+function inkSvg(ink) {
+  if (!ink || !ink.strokes || !ink.strokes.length) return '';
+  const H = ink.h || 450;
+  return `<svg viewBox="0 0 800 ${H}" xmlns="http://www.w3.org/2000/svg">` +
+    ink.strokes.map(s => `<polyline points="${s.p.map(pt => pt[0] + ',' + pt[1]).join(' ')}" fill="none" stroke="#22303C" stroke-width="${s.w}" stroke-linecap="round" stroke-linejoin="round"/>`).join('') +
+    `</svg>`;
+}
+function openInkPad(kind, key) {
+  const H = kind === 'compass' ? 450 : 300;
+  let strokes = [];
+  if (kind === 'compass') { const c = D.weeklyCompass[key]; if (c && c.ink) strokes = JSON.parse(JSON.stringify(c.ink.strokes || [])); }
+  else { const r = reflectionOf(key); if (r && r.ink) strokes = JSON.parse(JSON.stringify(r.ink.strokes || [])); }
+  openModal(`<h3>✏️ ${kind === 'compass' ? '생각 패드 · ' + esc(key) : '손글씨 회고 · ' + esc(key)}</h3>
+    <canvas id="inkCanvas"></canvas>
+    <div class="ink-tools">
+      <button class="mini-btn" onclick="inkUndo()">↩ 되돌리기</button>
+      <button class="mini-btn" onclick="inkClear()">전체 지우기</button>
+      <label style="display:flex;align-items:center;gap:4px;margin:0"><input type="checkbox" id="inkTouch"> 손가락 허용</label>
+      <span style="flex:1"></span>
+      <span>펜슬로 쓰세요</span>
+    </div>
+    <button class="m-primary" onclick="inkSave('${kind}','${key}')">저장</button>
+    <button class="m-cancel" onclick="closeModal()">취소</button>`, true);
+  const cv = document.getElementById('inkCanvas');
+  const W = cv.clientWidth || 800;
+  const scale = W / 800;
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * scale * dpr);
+  cv.style.height = (H * scale) + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(dpr * scale, dpr * scale);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#22303C';
+  _inkS = { cv, ctx, strokes, cur: null, scale, H };
+  redrawInk();
+  cv.addEventListener('pointerdown', inkDown);
+  cv.addEventListener('pointermove', inkMove);
+  cv.addEventListener('pointerup', inkUp);
+  cv.addEventListener('pointercancel', inkUp);
+  cv.addEventListener('pointerleave', inkUp);
+}
+function inkPos(e) {
+  const r = _inkS.cv.getBoundingClientRect();
+  return [Math.round((e.clientX - r.left) / _inkS.scale), Math.round((e.clientY - r.top) / _inkS.scale)];
+}
+function inkAllowed(e) {
+  if (e.pointerType === 'pen' || e.pointerType === 'mouse') return true;
+  const t = document.getElementById('inkTouch');
+  return t && t.checked;
+}
+function inkDown(e) {
+  if (!_inkS || !inkAllowed(e)) return;
+  e.preventDefault();
+  try { _inkS.cv.setPointerCapture(e.pointerId); } catch(err) {}
+  _inkS.cur = { pts: [inkPos(e)], pr: [e.pressure || 0.5] };
+}
+function inkMove(e) {
+  if (!_inkS || !_inkS.cur) return;
+  e.preventDefault();
+  const p = inkPos(e);
+  const last = _inkS.cur.pts[_inkS.cur.pts.length - 1];
+  if (Math.abs(p[0] - last[0]) + Math.abs(p[1] - last[1]) < 2) return;
+  _inkS.cur.pts.push(p); _inkS.cur.pr.push(e.pressure || 0.5);
+  const ctx = _inkS.ctx;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(last[0], last[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
+}
+function inkUp(e) {
+  if (!_inkS || !_inkS.cur) return;
+  const c = _inkS.cur;
+  if (c.pts.length > 1) {
+    const avg = c.pr.reduce((a, b) => a + b, 0) / c.pr.length;
+    const w = Math.max(1.5, Math.min(6, 1.2 + avg * 3.5));
+    _inkS.strokes.push({ w: Math.round(w * 10) / 10, p: c.pts });
+  }
+  _inkS.cur = null;
+  redrawInk();
+}
+function redrawInk() {
+  const { ctx, H, strokes } = _inkS;
+  ctx.clearRect(0, 0, 800, H);
+  strokes.forEach(s => {
+    ctx.lineWidth = s.w;
+    ctx.beginPath();
+    s.p.forEach((pt, i) => i ? ctx.lineTo(pt[0], pt[1]) : ctx.moveTo(pt[0], pt[1]));
+    ctx.stroke();
+  });
+}
+function inkUndo() { if (_inkS) { _inkS.strokes.pop(); redrawInk(); } }
+function inkClear() { if (_inkS) { _inkS.strokes = []; redrawInk(); } }
+function inkSave(kind, key) {
+  const ink = { h: _inkS.H, strokes: _inkS.strokes };
+  if (kind === 'compass') {
+    ensureCompass(key).ink = ink.strokes.length ? ink : undefined;
+    if (!ink.strokes.length) delete D.weeklyCompass[key].ink;
+  } else {
+    let r = reflectionOf(key);
+    if (!r) { r = { date: key, text: '', achieved: isAchieved(key) }; D.reflections.push(r); }
+    if (ink.strokes.length) r.ink = ink; else delete r.ink;
+  }
+  _inkS = null;
+  commit(); closeModal(); renderAll();
+  showToast('✏️ 저장 완료');
+}
 function closeModal() { document.getElementById('modalRoot').innerHTML = ''; }
 function editVision() {
   openModal(`<h3>비전 선언문</h3>
@@ -1744,14 +1871,15 @@ function renderRecords() {
   }
 
   // 회고 타임라인
-  const refls = D.reflections.filter(r => r.text).sort((a,b) => b.date.localeCompare(a.date)).slice(0, 30);
+  const refls = D.reflections.filter(r => r.text || (r.ink && r.ink.strokes && r.ink.strokes.length)).sort((a,b) => b.date.localeCompare(a.date)).slice(0, 30);
   html += `<div class="card"><h3>🌙 회고 타임라인</h3>`;
   if (refls.length) {
     refls.forEach(r => {
+      const hasInk = r.ink && r.ink.strokes && r.ink.strokes.length;
       html += `<div class="tl-row">
         <div class="tl-dot ${r.achieved?'hit':''}"></div>
         <div class="tl-date">${r.date.slice(5)}</div>
-        <div class="tl-text">${esc(r.text)}</div>
+        <div class="tl-text">${esc(r.text)}${hasInk ? `<div class="ink-view" style="max-width:280px;margin-top:4px">${inkSvg(r.ink)}</div>` : ''}</div>
       </div>`;
     });
   } else {
