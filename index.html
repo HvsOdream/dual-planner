@@ -668,7 +668,7 @@ function adoptSuggMonthly(idx) {
   if (!ag) { showToast('연결할 연간 목표(태그: ' + (s.tag||'?') + ')를 찾지 못했습니다'); return; }
   D.monthlyGoals.push({ id: uid('mg_'), month: s.month, goalId: ag.id, title: s.title, progress: 0 });
   commit(); showToast('🤖 월간 목표로 채택했습니다');
-  renderWeekly();
+  renderAll();
 }
 function suggCardHtml(wk) {
   if (!D.annualGoals.length) {
@@ -1420,6 +1420,20 @@ function renderGoals() {
       });
     } else {
       html += `<div class="sec-note" style="padding:4px 0">월간 목표가 아직 없습니다</div>`;
+    }
+    // 이 연간 목표에 대한 AI 월간 추천 (미채택분)
+    if (_sugg && Array.isArray(_sugg.monthly)) {
+      _sugg.monthly.forEach((s, i) => {
+        if (s.tag !== ag.tag) return;
+        if (D.monthlyGoals.some(m => m.month === s.month && m.title === s.title)) return;
+        html += `<div class="strip-row" style="align-items:flex-start;border-top:1px dashed var(--border);margin-top:6px;padding-top:8px">
+          <div class="t-main">
+            <div class="t-title" style="font-size:12.5px">🤖 ${esc(s.title)} <span class="sec-note">${esc(s.month)}</span></div>
+            ${s.why ? `<div class="sec-note" style="margin-top:2px">${esc(s.why)}</div>` : ''}
+          </div>
+          <button class="mini-btn send" onclick="adoptSuggMonthly(${i})">채택</button>
+        </div>`;
+      });
     }
     html += `<div class="mg-week-status ${wkRocks.length?'linked':''}">${wkRocks.length ? `🧭 이번 주 빅록 ${wkRocks.length}개 연결됨` : '이번 주 연결된 빅록 없음'}</div>
       <button class="sec-add-btn" style="margin-top:8px" onclick="addMonthlyGoal('${ag.id}')">＋ 월간 목표</button>
