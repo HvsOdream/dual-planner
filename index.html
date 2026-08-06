@@ -464,7 +464,7 @@ function showToast(msg) {
 function emptyData() {
   return { _format:'dual_planner_sync', _version:3, _modified:new Date().toISOString(),
     mission:'', values:'', vision:'', goalsText:'', annualGoals:[], monthlyGoals:[],
-    roles:[], weeklyGoals:[], weeklyCompass:{}, dailyTasks:[], reflections:[] };
+    roles:[], weeklyGoals:[], weeklyCompass:{}, dailyTasks:[], reflections:[], monthlyReviews:{} };
 }
 function migrateV2(v2) {
   const d = emptyData();
@@ -653,6 +653,14 @@ function adoptSugg(idx) {
   commit(); showToast('🤖 추천을 빅록으로 채택했습니다');
   renderWeekly();
 }
+function adoptSuggAnnual(idx) {
+  if (!_sugg || !_sugg.annual || !_sugg.annual[idx]) return;
+  const s = _sugg.annual[idx];
+  if (D.annualGoals.some(a => a.title === s.title)) { showToast('이미 있는 목표입니다'); return; }
+  D.annualGoals.push({ id: uid('ag_'), tag: s.tag || '', title: s.title, year: new Date().getFullYear() });
+  commit(); showToast('🤖 연간 목표로 채택했습니다 — 목표 탭에서 확인하세요');
+  renderWeekly();
+}
 function adoptSuggMonthly(idx) {
   if (!_sugg || !_sugg.monthly || !_sugg.monthly[idx]) return;
   const s = _sugg.monthly[idx];
@@ -696,6 +704,20 @@ function suggCardHtml(wk) {
           ${s.why ? `<div class="sec-note" style="margin-top:2px">${esc(s.why)}</div>` : ''}
         </div>
         ${adopted ? `<span class="strip-sent">✓ 채택됨</span>` : `<button class="mini-btn send" onclick="adoptSuggMonthly(${i})">채택</button>`}
+      </div>`;
+    });
+  }
+  const ans = (_sugg.annual || []);
+  if (ans.length) {
+    html += `<div class="task-group-label" style="margin:10px 0 4px">연간 목표 추천 <span class="sec-note" style="font-weight:500">비어 있는 영역 제안</span></div>`;
+    ans.forEach((s, i) => {
+      const adopted = D.annualGoals.some(a => a.title === s.title);
+      html += `<div class="strip-row" style="align-items:flex-start">
+        <div class="t-main">
+          <div class="t-title" style="font-size:13px">🎯 [${esc(s.tag||'')}] ${esc(s.title)}</div>
+          ${s.why ? `<div class="sec-note" style="margin-top:2px">${esc(s.why)}</div>` : ''}
+        </div>
+        ${adopted ? `<span class="strip-sent">✓ 채택됨</span>` : `<button class="mini-btn send" onclick="adoptSuggAnnual(${i})">채택</button>`}
       </div>`;
     });
   }
@@ -799,6 +821,15 @@ function renderToday() {
     html += `<div class="sunday-card">
       <span>🌙 일요일 저녁입니다. 다음 주 나침반을 세울 시간이에요.</span>
       <button onclick="planNextWeek()">작성하기</button>
+    </div>`;
+  }
+
+  // 월말·월초 → 월간 점검 제안
+  const mrT = monthReviewTarget();
+  if (mrT && !D.monthlyReviews[mrT]) {
+    html += `<div class="sunday-card" style="background:linear-gradient(135deg,#1F4E79,#2a6f97)">
+      <span>📆 ${parseInt(mrT.slice(5))}월을 점검할 시간입니다. 월간 목표를 돌아보고 다음 달을 준비하세요.</span>
+      <button onclick="openMonthlyReview('${mrT}')">점검하기</button>
     </div>`;
   }
 
@@ -938,9 +969,10 @@ function toggleTask(id) {
 }
 function cycleTaskPri(id) {
   const t = D.dailyTasks.find(t => t.id === id); if (!t) return;
-  const next = { A:'B', B:'C', C:'A' }[t.priority];
-  if (next === 'A' && tasksOf(t.date).filter(x=>x.priority==='A' && x.id!==id).length >= 3) {
-    showToast('A는 하루 3개까지입니다'); return;
+  let next = { A:'B', B:'C', C:'A' }[t.priority];
+  if (next === 'A' && tasksOf(t.date).filter(x => x.priority === 'A' && x.id !== id).length >= 3) {
+    next = 'B';
+    showToast('A가 가득 차서(3/3) B로 이동했습니다');
   }
   t.priority = next;
   recordAchievement(t.date);
@@ -1265,6 +1297,84 @@ function mondayOfWeek(wk) {
   return getWeekStart(new Date());
 }
 
+// ═══════════════════ 월간 점검 ═══════════════════
+let _mrNoteTmp = null;
+function monthReviewTarget() {
+  const now = new Date(); const day = now.getDate();
+  const dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  if (day <= 3) { const p = new Date(now.getFullYear(), now.getMonth() - 1, 1); return dstr(p).slice(0, 7); }
+  if (day >= dim - 1) return todayStr().slice(0, 7);
+  return null;
+}
+function openMonthlyReview(m) {
+  m = m || monthReviewTarget() || todayStr().slice(0, 7);
+  const [y, mo] = m.split('-').map(Number);
+  const dim = new Date(y, mo, 0).getDate();
+  let achDays = 0, aTot = 0, aDone = 0;
+  for (let i = 1; i <= dim; i++) {
+    const ds = m + '-' + String(i).padStart(2, '0');
+    if (achievedOn(ds)) achDays++;
+    tasksOf(ds).forEach(t => { if (t.priority === 'A') { aTot++; if (t.done) aDone++; } });
+  }
+  const saved = D.monthlyReviews[m];
+  const note = _mrNoteTmp !== null ? _mrNoteTmp : (saved ? saved.note : '');
+  let rows = '';
+  D.annualGoals.forEach(ag => {
+    const mgs = D.monthlyGoals.filter(g => g.goalId === ag.id && g.month === m);
+    if (!mgs.length) return;
+    mgs.forEach(g => {
+      rows += `<div class="mg-row">
+        <div class="mg-top">
+          <span class="mg-month cur">[${esc(ag.tag)}]</span>
+          <span class="mg-title">${esc(g.title)}</span>
+          <span class="mg-pct">${g.progress|0}%</span>
+        </div>
+        <div class="pbar"><div style="width:${Math.min(100, g.progress|0)}%"></div></div>
+        <div class="mg-ctrl">
+          <button class="mini-btn" onclick="bumpMR('${g.id}',-10,'${m}')">−10</button>
+          <button class="mini-btn" onclick="bumpMR('${g.id}',10,'${m}')">+10</button>
+        </div>
+      </div>`;
+    });
+  });
+  if (!rows) rows = `<div class="sec-note" style="padding:6px 0">이 달에 등록된 월간 목표가 없습니다. 목표 탭 또는 AI 추천에서 추가할 수 있습니다.</div>`;
+  // 다음 달 AI 월간 추천
+  const next = new Date(y, mo, 1); const nextM = dstr(next).slice(0, 7);
+  let suggRows = '';
+  if (_sugg && (_sugg.monthly || []).some(s => s.month === nextM)) {
+    (_sugg.monthly || []).forEach((s, i) => {
+      if (s.month !== nextM) return;
+      const adopted = D.monthlyGoals.some(g => g.month === s.month && g.title === s.title);
+      suggRows += `<div class="strip-row">
+        <span class="yday-title">[${esc(s.tag)}] ${esc(s.title)}</span>
+        ${adopted ? `<span class="strip-sent">✓</span>` : `<button class="mini-btn send" onclick="adoptSuggMonthly(${i});openMonthlyReview('${m}')">채택</button>`}
+      </div>`;
+    });
+  }
+  openModal(`<h3>📆 ${y}년 ${mo}월 점검</h3>
+    <div class="yday-summary">🎉 달성 ${achDays}일 · A 완료율 ${aTot ? Math.round(aDone/aTot*100) : 0}% (${aDone}/${aTot})</div>
+    <div class="task-group-label" style="margin:12px 0 4px">월간 목표 진행률</div>
+    ${rows}
+    ${suggRows ? `<div class="task-group-label" style="margin:12px 0 4px">다음 달(${nextM.slice(5)}월) AI 추천</div>${suggRows}` : ''}
+    <label>이번 달 한 줄 총평</label>
+    <textarea id="mrNote" oninput="_mrNoteTmp=this.value" placeholder="이 달은 어떤 달이었나요?">${esc(note)}</textarea>
+    <button class="m-primary" onclick="saveMonthlyReview('${m}')">점검 완료</button>
+    <button class="m-cancel" onclick="_mrNoteTmp=null;closeModal()">닫기</button>`);
+}
+function bumpMR(id, d, m) {
+  const g = D.monthlyGoals.find(g => g.id === id); if (!g) return;
+  const el = document.getElementById('mrNote'); if (el) _mrNoteTmp = el.value;
+  g.progress = Math.max(0, Math.min(100, (g.progress|0) + d));
+  commit(); openMonthlyReview(m);
+}
+function saveMonthlyReview(m) {
+  const note = (document.getElementById('mrNote') || {}).value || '';
+  D.monthlyReviews[m] = { note: note.trim(), at: new Date().toISOString() };
+  _mrNoteTmp = null;
+  commit(); closeModal(); renderAll();
+  showToast('📆 ' + m + ' 월간 점검 완료');
+}
+
 // ═══════════════════ ③ 목표 ═══════════════════
 function renderGoals() {
   const wrap = document.getElementById('goalsWrap');
@@ -1276,6 +1386,7 @@ function renderGoals() {
     <div class="v-label">VISION</div>
     <div class="v-text">${esc(D.vision || '비전 선언문을 작성해보세요')}</div>
     <button class="v-edit" onclick="editVision()">편집</button>
+    <button class="v-edit" style="margin-left:6px" onclick="openMonthlyReview()">📆 월간 점검</button>
   </div>`;
 
   D.annualGoals.forEach(ag => {
@@ -1550,6 +1661,20 @@ function renderRecords() {
       html += `<div class="gr-row">
         <div class="gr-top"><span class="gr-name">[${esc(ag.tag)}] ${esc(shorten(ag.title, 30))}</span><span class="gr-pct">${avg}% <span style="font-weight:500;color:var(--muted)">(${n}개)</span></span></div>
         <div class="pbar"><div style="width:${avg}%"></div></div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // 월간 점검 기록
+  const mrs = Object.entries(D.monthlyReviews || {}).sort((a,b) => b[0].localeCompare(a[0]));
+  if (mrs.length) {
+    html += `<div class="card"><h3>📆 월간 점검 기록</h3>`;
+    mrs.forEach(([m, r]) => {
+      html += `<div class="tl-row">
+        <div class="tl-dot hit"></div>
+        <div class="tl-date">${esc(m)}</div>
+        <div class="tl-text">${esc(r.note || '(총평 없음)')}</div>
       </div>`;
     });
     html += `</div>`;
