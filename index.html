@@ -493,6 +493,32 @@ function normalize(d) {
   for (const k in base) if (d[k] === undefined) d[k] = base[k];
   return d;
 }
+// ─── 병합 동기화: 기기별 덮어쓰기 금지, id 기준 합집합 + 최신 기기 우선 ───
+function mergeData(remote, local) {
+  const remoteNewer = new Date(remote._modified || remote._synced || 0) > new Date(local._modified || 0);
+  const byKey = (rArr, lArr, key) => {
+    const map = new Map();
+    // 오래된 쪽 먼저 깔고, 최신 쪽으로 덮어씀 (충돌 시 최신 기기 승리, 한쪽에만 있으면 유지)
+    (remoteNewer ? lArr : rArr || []).forEach(x => x && map.set(x[key], x));
+    (remoteNewer ? rArr : lArr || []).forEach(x => x && map.set(x[key], x));
+    return [...map.values()];
+  };
+  const out = Object.assign({}, remoteNewer ? local : remote, remoteNewer ? remote : local);
+  out.weeklyGoals  = byKey(remote.weeklyGoals  || [], local.weeklyGoals  || [], 'id');
+  out.dailyTasks   = byKey(remote.dailyTasks   || [], local.dailyTasks   || [], 'id');
+  out.monthlyGoals = byKey(remote.monthlyGoals || [], local.monthlyGoals || [], 'id');
+  out.annualGoals  = byKey(remote.annualGoals  || [], local.annualGoals  || [], 'id');
+  out.roles        = byKey(remote.roles        || [], local.roles        || [], 'id');
+  out.reflections  = byKey(remote.reflections  || [], local.reflections  || [], 'date');
+  const ovl = (r, l) => remoteNewer ? Object.assign({}, l || {}, r || {}) : Object.assign({}, r || {}, l || {});
+  out.weeklyCompass  = ovl(remote.weeklyCompass, local.weeklyCompass);
+  out.monthlyReviews = ovl(remote.monthlyReviews, local.monthlyReviews);
+  out._modified = new Date(Math.max(
+    new Date(remote._modified || remote._synced || 0).getTime(),
+    new Date(local._modified || 0).getTime()
+  )).toISOString();
+  return out;
+}
 
 let D = null;
 let _dirty = false;
@@ -535,10 +561,11 @@ async function cloudSync(manual) {
     if (result.status === 'ok' && result.data) {
       const remote = result.data;
       if ((remote._version|0) >= 3) {
-        const rT = new Date(remote._modified || remote._synced || 0).getTime();
-        const lT = new Date(D._modified || 0).getTime();
-        if (rT > lT && !_dirty) {
-          D = normalize(remote); persist(); renderAll();
+        // 병합: 어느 기기가 오래됐든 서로의 항목을 잃지 않는다 (충돌 시 최신 기기 우선)
+        const before = JSON.stringify(D);
+        const merged = normalize(mergeData(remote, D));
+        if (JSON.stringify(merged) !== before) {
+          D = merged; persist(); renderAll();
         }
       }
       // remote v2 → 이미 시드로 이관됨: pull 생략, v3로 덮어씀
