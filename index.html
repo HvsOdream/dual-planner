@@ -558,30 +558,48 @@ async function cloudSync(manual) {
   try {
     const res = await fetch(CLOUD_SYNC_URL + '?action=read');
     const result = await res.json();
-    if (result.status === 'ok' && result.data) {
-      const remote = result.data;
-      if ((remote._version|0) >= 3) {
-        // 병합: 어느 기기가 오래됐든 서로의 항목을 잃지 않는다 (충돌 시 최신 기기 우선)
-        const before = JSON.stringify(D);
-        const merged = normalize(mergeData(remote, D));
-        if (JSON.stringify(merged) !== before) {
-          D = merged; persist(); renderAll();
-        }
+    let remote = null;
+    if (result.status === 'ok' && result.data && (result.data._version|0) >= 3) {
+      remote = result.data;
+      // 병합: 어느 기기가 오래됐든 서로의 항목을 잃지 않는다 (충돌 시 최신 기기 우선)
+      const before = JSON.stringify(D);
+      const merged = normalize(mergeData(remote, D));
+      if (JSON.stringify(merged) !== before) {
+        D = merged; persist(); renderAll();
       }
-      // remote v2 → 이미 시드로 이관됨: pull 생략, v3로 덮어씀
     }
-    const payload = JSON.parse(JSON.stringify(D));
-    payload._exported = new Date().toISOString();
-    payload._device = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document ? 'ipad'
-                    : /Mobile/.test(navigator.userAgent) ? 'phone' : 'desktop';
-    await fetch(CLOUD_SYNC_URL, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action:'save', data: payload, source:'planner_v3' }),
-      mode: 'no-cors'
-    });
-    _dirty = false;
+    // 읽기·병합 완료 → 즉시 완료 표시 (쓰기는 필요할 때만, 백그라운드처럼)
     setCloud('☁️ ' + new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) + ' 동기화됨');
     if (manual) showToast('☁️ 동기화 완료');
+
+    // 변경 없으면 쓰기 생략 → 동기화 시간 절반 이하로 (키 순서 무시하는 안정 비교)
+    const stableStr = x => Array.isArray(x) ? '[' + x.map(stableStr).join(',') + ']'
+      : (x && typeof x === 'object') ? '{' + Object.keys(x).sort().map(k => JSON.stringify(k) + ':' + stableStr(x[k])).join(',') + '}'
+      : JSON.stringify(x);
+    const cleanse = o => {
+      const c = normalize(Object.assign({}, o));
+      Object.keys(c).filter(k => k.startsWith('_')).forEach(k => delete c[k]);
+      // 완전히 빈 나침반 엔트리는 비교에서 제외 (렌더링 부산물 호환)
+      const wc = {};
+      Object.entries(c.weeklyCompass || {}).forEach(([w, v]) => {
+        if ((v.theme || '').trim() || Object.values(v.saw || {}).some(s => (s || '').trim())) wc[w] = v;
+      });
+      c.weeklyCompass = wc;
+      return stableStr(c);
+    };
+    const needPush = _dirty || !remote || cleanse(D) !== cleanse(remote);
+    if (needPush) {
+      const payload = JSON.parse(JSON.stringify(D));
+      payload._exported = new Date().toISOString();
+      payload._device = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document ? 'ipad'
+                      : /Mobile/.test(navigator.userAgent) ? 'phone' : 'desktop';
+      await fetch(CLOUD_SYNC_URL, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action:'save', data: payload, source:'planner_v3' }),
+        mode: 'no-cors'
+      });
+    }
+    _dirty = false;
   } catch(err) {
     console.error('cloudSync', err);
     setCloud('☁️ 동기화 실패');
@@ -629,7 +647,11 @@ function bestStreak() {
   });
   return best;
 }
-function compassOf(week) {
+function compassOf(week) { // 읽기 전용 — 데이터를 만들지 않음
+  const c = D.weeklyCompass[week];
+  return c ? { theme: c.theme || '', saw: c.saw || {} } : { theme:'', saw:{} };
+}
+function ensureCompass(week) { // 쓰기 시에만 생성
   if (!D.weeklyCompass[week]) D.weeklyCompass[week] = { theme:'', saw:{ body:'', mind:'', social:'', spirit:'' } };
   if (!D.weeklyCompass[week].saw) D.weeklyCompass[week].saw = { body:'', mind:'', social:'', spirit:'' };
   return D.weeklyCompass[week];
@@ -1202,10 +1224,10 @@ function monthGoalSelect(g) {
   return `<div class="wg-link-select"><select onchange="linkRock('${g.id}', this.value)">
     <option value="">🎯 월간 목표 연결...</option>${opts}</select></div>`;
 }
-function setTheme(wk, v) { compassOf(wk).theme = v.trim(); commit(); }
-function setSaw(wk, key, v) { compassOf(wk).saw[key] = v.trim(); commit(); }
+function setTheme(wk, v) { ensureCompass(wk).theme = v.trim(); commit(); }
+function setSaw(wk, key, v) { ensureCompass(wk).saw[key] = v.trim(); commit(); }
 function saveCompass(wk) {
-  const c = compassOf(wk);
+  const c = ensureCompass(wk);
   const t = document.getElementById('cmp_theme'); if (t) c.theme = t.value.trim();
   SAW_AREAS.forEach(a => { const el = document.getElementById('cmp_saw_' + a.key); if (el) c.saw[a.key] = el.value.trim(); });
   commit();
