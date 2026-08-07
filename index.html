@@ -385,6 +385,12 @@ button { cursor: pointer; }
   opacity: 0; transition: opacity .3s; pointer-events: none; max-width: 88vw; text-align:center;
 }
 .toast.show { opacity: 1; }
+.toast.action { pointer-events: auto; display: flex; align-items: center; gap: 10px; }
+.toast.action button {
+  background: var(--viz-1); color: #fff; border: none; border-radius: 8px;
+  padding: 6px 12px; font-size: 12.5px; font-weight: 800; white-space: nowrap;
+}
+.done-chip { display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; color: var(--good); }
 </style>
 </head>
 <body>
@@ -462,8 +468,24 @@ function fmtMD(d) { return (d.getMonth()+1) + '/' + d.getDate(); }
 function esc(s) { return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function showToast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg; el.classList.add('show');
+  el.classList.remove('action'); el.textContent = msg; el.classList.add('show');
   clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2400);
+}
+let _toastFn = null;
+function showActionToast(msg, btnLabel, fn) {
+  const el = document.getElementById('toast');
+  _toastFn = fn;
+  el.innerHTML = `<span>${esc(msg)}</span><button onclick="if(_toastFn){_toastFn();_toastFn=null;}document.getElementById('toast').classList.remove('show','action')">${esc(btnLabel)}</button>`;
+  el.classList.add('show', 'action');
+  clearTimeout(el._t); el._t = setTimeout(() => { el.classList.remove('show', 'action'); _toastFn = null; }, 6000);
+}
+function completeRock(id) {
+  const g = D.weeklyGoals.find(g => g.id === id); if (!g) return;
+  g.done = true; commit(); renderAll();
+  showToast('🪨 빅록 완료!');
+}
+function rockExecuted(id) { // 이 빅록에서 보낸 할 일 중 완료된 것이 있는가
+  return D.dailyTasks.some(t => t.weeklyGoalId === id && t.done);
 }
 
 // ═══════════════════ 데이터 & 마이그레이션 ═══════════════════
@@ -920,11 +942,14 @@ function renderToday() {
     undoneRocks.forEach(g => {
       const role = D.roles.find(r => r.id === g.roleId);
       const sentToday = D.dailyTasks.some(t => t.date === td && t.weeklyGoalId === g.id);
+      const executed = rockExecuted(g.id);
       html += `<div class="strip-row">
         <span>${role ? esc(role.icon) : '🪨'}</span>
         <span class="strip-title">${esc(g.title)}</span>
         ${g.carryCount ? `<span class="chip warn">↻${g.carryCount}</span>` : ''}
-        ${sentToday ? `<span class="strip-sent">✓ 오늘</span>` : `<button class="mini-btn send" onclick="sendToToday('${g.id}')">오늘로</button>`}
+        ${executed
+          ? `<span class="done-chip">✓ 실행됨</span><button class="mini-btn send" onclick="completeRock('${g.id}')">완료</button>`
+          : sentToday ? `<span class="strip-sent">✓ 오늘</span>` : `<button class="mini-btn send" onclick="sendToToday('${g.id}')">오늘로</button>`}
       </div>`;
     });
     if (!undoneRocks.length) html += `<div class="strip-done-note">✓ 이번 주 빅록을 모두 완료했습니다!</div>`;
@@ -1025,6 +1050,11 @@ function toggleTask(id) {
   t.done = !t.done;
   recordAchievement(t.date);
   commit(); renderToday();
+  // 완료한 할 일이 빅록에서 온 것이면 → 빅록도 완료할지 제안
+  if (t.done && t.weeklyGoalId) {
+    const g = D.weeklyGoals.find(g => g.id === t.weeklyGoalId);
+    if (g && !g.done) showActionToast('🪨 "' + shorten(g.title, 18) + '" 빅록도 끝났나요?', '빅록 완료', () => completeRock(g.id));
+  }
 }
 function cycleTaskPri(id) {
   const t = D.dailyTasks.find(t => t.id === id); if (!t) return;
@@ -1165,6 +1195,7 @@ function weekPanelHtml(wk, ws, readonly) {
           <div class="t-link">
             ${g.carryCount ? `<span class="chip warn" title="원 주차: ${esc(g.carriedFrom ? (originWeekOf(g)||'') : '')}">↻ 이월 ${g.carryCount}회</span>` : ''}
             ${mg ? `<span class="chip">🎯 ${esc(shorten((ag?'['+ag.tag+'] ':'')+mg.title, 20))}</span>` : ''}
+            ${!g.done && rockExecuted(g.id) ? `<span class="done-chip">✓ 오늘 실행됨 — 끝났으면 체크</span>` : ''}
           </div>
           ${!readonly && !mg && D.monthlyGoals.length ? monthGoalSelect(g) : ''}
         </div>
