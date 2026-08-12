@@ -438,6 +438,12 @@ button { cursor: pointer; }
 'use strict';
 // ═══════════════════ 상수 & 시드 ═══════════════════
 const CLOUD_SYNC_URL = 'https://script.google.com/macros/s/AKfycbwGiYjD-FSnkhkWhp7KIGHWxfvsPaKIqewtyeDaCoblS8ZEUgtb5wtITQU2Vuo4j9k/exec';
+// Apps Script가 가끔 느려질 때 fetch가 무한 대기하며 UI가 "동기화 중..."에 영구히 멈추는 문제 방지용 타임아웃 래퍼
+function fetchTimeout(url, opts, ms) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms || 12000);
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal })).finally(() => clearTimeout(id));
+}
 const LS_KEY = 'dp3_data';
 const SAW_AREAS = [
   { key:'body',   icon:'💪', label:'신체' },
@@ -584,7 +590,7 @@ async function cloudSync(manual) {
   const btn = document.getElementById('cloudSyncBtn'); btn.classList.add('syncing');
   setCloud('☁️ 동기화 중...');
   try {
-    const res = await fetch(CLOUD_SYNC_URL + '?action=read');
+    const res = await fetchTimeout(CLOUD_SYNC_URL + '?action=read', {}, 12000);
     const result = await res.json();
     let remote = null;
     if (result.status === 'ok' && result.data && (result.data._version|0) >= 3) {
@@ -621,11 +627,11 @@ async function cloudSync(manual) {
       payload._exported = new Date().toISOString();
       payload._device = /iPad|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document ? 'ipad'
                       : /Mobile/.test(navigator.userAgent) ? 'phone' : 'desktop';
-      await fetch(CLOUD_SYNC_URL, {
+      await fetchTimeout(CLOUD_SYNC_URL, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action:'save', data: payload, source:'planner_v3' }),
         mode: 'no-cors'
-      });
+      }, 15000);
     }
     _dirty = false;
   } catch(err) {
@@ -710,7 +716,7 @@ try { const _sc = JSON.parse(localStorage.getItem('dp3_sugg') || 'null'); if (_s
 async function fetchSuggestions() {
   if (!CLOUD_SYNC_URL) return;
   try {
-    const res = await fetch(CLOUD_SYNC_URL + '?action=suggestions');
+    const res = await fetchTimeout(CLOUD_SYNC_URL + '?action=suggestions', {}, 10000);
     const r = await res.json();
     if (r.status === 'ok' && r.data) {
       _sugg = r.data;
@@ -808,7 +814,7 @@ try { const _ec = JSON.parse(localStorage.getItem('dp3_events') || 'null'); if (
 async function fetchEvents() {
   if (!CLOUD_SYNC_URL) return;
   try {
-    const res = await fetch(CLOUD_SYNC_URL + '?action=events&days=2');
+    const res = await fetchTimeout(CLOUD_SYNC_URL + '?action=events&days=2', {}, 10000);
     const r = await res.json();
     if (r.status === 'ok' && Array.isArray(r.events)) {
       _events = r.events;
