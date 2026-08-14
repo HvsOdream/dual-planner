@@ -498,7 +498,7 @@ function rockExecuted(id) { // 이 빅록에서 보낸 할 일 중 완료된 것
 function emptyData() {
   return { _format:'dual_planner_sync', _version:3, _modified:new Date().toISOString(),
     mission:'', values:'', vision:'', goalsText:'', annualGoals:[], monthlyGoals:[],
-    roles:[], weeklyGoals:[], weeklyCompass:{}, dailyTasks:[], reflections:[], monthlyReviews:{} };
+    roles:[], weeklyGoals:[], weeklyCompass:{}, dailyTasks:[], reflections:[], monthlyReviews:{}, dailyMemos:[] };
 }
 function migrateV2(v2) {
   const d = emptyData();
@@ -548,6 +548,7 @@ function mergeData(remote, local) {
   // 최신 기기의 전체 목록으로 교체하는 편이 안전하다.
   out.roles        = remoteNewer ? (remote.roles || []) : (local.roles || []);
   out.reflections  = byKey(remote.reflections  || [], local.reflections  || [], 'date');
+  out.dailyMemos   = byKey(remote.dailyMemos   || [], local.dailyMemos   || [], 'id');
   const ovl = (r, l) => remoteNewer ? Object.assign({}, l || {}, r || {}) : Object.assign({}, r || {}, l || {});
   out.weeklyCompass  = ovl(remote.weeklyCompass, local.weeklyCompass);
   out.monthlyReviews = ovl(remote.monthlyReviews, local.monthlyReviews);
@@ -1038,9 +1039,51 @@ function renderToday() {
       <button class="mini-btn" onclick="openInkPad('reflect','${td}')">✏️ 손글씨</button>
       <button class="mini-btn send" onclick="saveReflection()">저장</button>
     </div>
+  </div>`;
+
+  // ── 오늘 메모 ──
+  const tdMemos = memosOf(td);
+  html += `
+  <div class="card" style="margin-top:16px">
+    <h3>📝 오늘 메모 <span class="sec-note">떠오르는 것을 바로 적어두세요</span></h3>`;
+  tdMemos.forEach(m => {
+    html += `
+    <div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid rgba(0,0,0,.06)">
+      <span style="font-size:11px;color:var(--muted);white-space:nowrap;padding-top:2px">${esc(m.time || '')}</span>
+      <span style="flex:1;font-size:13.5px;line-height:1.5;white-space:pre-wrap">${esc(m.text)}</span>
+      <button class="x-btn" id="mdel_${m.id}" onclick="delMemo('${m.id}')">✕</button>
+    </div>`;
+  });
+  if (!tdMemos.length) html += `<div class="empty-hint" style="padding:8px 0">아직 메모가 없습니다.</div>`;
+  html += `
+    <div class="add-bar" style="margin-top:10px">
+      <input id="newMemoInput" placeholder="메모 추가..." onkeydown="if(event.key==='Enter')addMemo()">
+      <button class="go" onclick="addMemo()">추가</button>
+    </div>
   </div>
   </div></div>`;
   wrap.innerHTML = html;
+}
+function memosOf(date) { return (D.dailyMemos || []).filter(m => m.date === date).sort((a,b) => (a.time||'').localeCompare(b.time||'')); }
+function addMemo() {
+  const inp = document.getElementById('newMemoInput');
+  const text = inp.value.trim();
+  if (!text) return;
+  if (!D.dailyMemos) D.dailyMemos = [];
+  const now = new Date();
+  const hhmm = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  D.dailyMemos.push({ id: uid('dm_'), date: todayStr(), time: hhmm, text });
+  commit(); renderToday();
+}
+function delMemo(id) {
+  const btn = document.getElementById('mdel_' + id);
+  if (btn && !btn.classList.contains('confirm')) {
+    btn.classList.add('confirm'); btn.textContent = '삭제?';
+    setTimeout(() => { if (btn.isConnected) { btn.classList.remove('confirm'); btn.textContent = '✕'; } }, 2500);
+    return;
+  }
+  D.dailyMemos = (D.dailyMemos || []).filter(m => m.id !== id);
+  commit(); renderToday();
 }
 function shorten(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
 function setAddPri(p) { addPri = p; renderToday(); document.getElementById('newTaskInput').focus(); }
@@ -1873,10 +1916,11 @@ function renderRecords() {
     else if (as.length && as.some(t=>t.done)) { lv = 'lv2'; tip += ` · A ${as.filter(t=>t.done).length}/${as.length}`; }
     else if (doneCnt) { lv = 'lv1'; tip += ` · ${doneCnt}개 완료`; }
     else if (!dayTasks.length) { lv = 'lv0'; }
-    html += `<div class="hm-cell ${lv} ${ds===td?'today-ring':''}" title="${tip}">${day}</div>`;
+    html += `<div class="hm-cell ${lv} ${ds===td?'today-ring':''}" title="${tip}" style="cursor:pointer" onclick="openDayDetail('${ds}')">${day}</div>`;
   }
   html += `</div>
     <div class="hm-legend">적음 <i style="background:#fff"></i><i style="background:var(--seq-100)"></i><i style="background:var(--seq-200)"></i><i style="background:var(--seq-350)"></i><i style="background:var(--seq-500)"></i> 달성</div>
+    <div class="sec-note" style="margin-top:6px;text-align:center">날짜를 누르면 그날의 기록을 볼 수 있습니다</div>
   </div>`;
 
   // 목표별 달성률
@@ -1917,7 +1961,7 @@ function renderRecords() {
   if (refls.length) {
     refls.forEach(r => {
       const hasInk = r.ink && r.ink.strokes && r.ink.strokes.length;
-      html += `<div class="tl-row">
+      html += `<div class="tl-row" style="cursor:pointer" onclick="openDayDetail('${r.date}')">
         <div class="tl-dot ${r.achieved?'hit':''}"></div>
         <div class="tl-date">${r.date.slice(5)}</div>
         <div class="tl-text">${esc(r.text)}${hasInk ? `<div class="ink-view" style="max-width:280px;margin-top:4px">${inkSvg(r.ink)}</div>` : ''}</div>
@@ -1928,6 +1972,57 @@ function renderRecords() {
   }
   html += `</div>`;
   wrap.innerHTML = html;
+}
+
+// ═══════════════════ 날짜별 기록 상세 (히트맵/타임라인에서 날짜 클릭) ═══════════════════
+function openDayDetail(ds) {
+  const d = new Date(ds + 'T00:00:00');
+  const order = { A:0, B:1, C:2 };
+  const tasks = tasksOf(ds).slice().sort((a,b) => order[a.priority]-order[b.priority]);
+  const memos = memosOf(ds);
+  const r = reflectionOf(ds);
+  const hasInk = r && r.ink && r.ink.strokes && r.ink.strokes.length;
+  const ach = achievedOn(ds);
+
+  let html = `<h3>📅 ${d.getMonth()+1}월 ${d.getDate()}일 (${DOW[(d.getDay()+6)%7]})${ach ? ' <span style="font-size:13px;color:var(--seq-500,#2a6f97)">🎉 달성</span>' : ''}</h3>`;
+
+  // 할 일
+  html += `<label>✅ 할 일 ${tasks.length ? `(${tasks.filter(t=>t.done).length}/${tasks.length})` : ''}</label>`;
+  if (tasks.length) {
+    tasks.forEach(t => {
+      html += `<div style="display:flex;gap:8px;align-items:center;padding:5px 0">
+        <span class="pri-badge pri-${t.priority}" style="width:22px;height:22px;font-size:11px">${t.priority}</span>
+        <span style="flex:1;font-size:13.5px;${t.done?'':'color:var(--muted)'}">${t.done?'✓ ':''}${esc(t.title)}</span>
+      </div>`;
+    });
+  } else {
+    html += `<div class="sec-note" style="padding:4px 0 8px">기록된 할 일이 없습니다.</div>`;
+  }
+
+  // 메모
+  html += `<label style="margin-top:10px">📝 메모</label>`;
+  if (memos.length) {
+    memos.forEach(m => {
+      html += `<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0">
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap;padding-top:2px">${esc(m.time || '')}</span>
+        <span style="flex:1;font-size:13.5px;line-height:1.5;white-space:pre-wrap">${esc(m.text)}</span>
+      </div>`;
+    });
+  } else {
+    html += `<div class="sec-note" style="padding:4px 0 8px">메모가 없습니다.</div>`;
+  }
+
+  // 회고
+  html += `<label style="margin-top:10px">🌙 회고</label>`;
+  if (r && (r.text || hasInk)) {
+    if (r.text) html += `<div style="font-size:13.5px;line-height:1.6;padding:4px 0;white-space:pre-wrap">“${esc(r.text)}”</div>`;
+    if (hasInk) html += `<div class="ink-view" style="margin-top:6px">${inkSvg(r.ink)}</div>`;
+  } else {
+    html += `<div class="sec-note" style="padding:4px 0 8px">회고가 없습니다.</div>`;
+  }
+
+  html += `<button class="m-cancel" onclick="closeModal()" style="margin-top:12px">닫기</button>`;
+  openModal(html);
 }
 
 // ═══════════════════ 데이터 모달 (내보내기/가져오기) ═══════════════════
