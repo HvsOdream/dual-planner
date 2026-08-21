@@ -160,6 +160,11 @@ button { cursor: pointer; }
   box-shadow: var(--shadow);
 }
 .task-row.done { opacity: .55; }
+.task-row.inprog { border-left: 4px solid var(--accent, #e07b00); padding-left: 9px; background: linear-gradient(90deg, rgba(224,123,0,.07), var(--card) 45%); }
+.prog-btn { border: 1px solid var(--hairline); background: transparent; color: var(--muted); border-radius: 999px; font-size: 10.5px; font-weight: 800; padding: 2px 8px; white-space: nowrap; flex-shrink: 0; }
+.prog-btn.on { background: #e07b00; border-color: #e07b00; color: #fff; animation: progPulse 1.6s ease-in-out infinite; }
+@keyframes progPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(224,123,0,.45); } 50% { box-shadow: 0 0 0 5px rgba(224,123,0,0); } }
+.task-row.done .prog-btn { display: none; }
 .task-row.done .t-title { text-decoration: line-through; }
 .chk {
   width: 24px; height: 24px; border-radius: 8px; border: 2px solid var(--border);
@@ -873,7 +878,7 @@ function renderToday() {
   const now = new Date();
   const tasks = tasksOf(td);
   const order = { A:0, B:1, C:2 };
-  tasks.sort((a,b) => order[a.priority]-order[b.priority] || (a.done?1:0)-(b.done?1:0));
+  tasks.sort((a,b) => order[a.priority]-order[b.priority] || (a.done?1:0)-(b.done?1:0) || (b.inProgress?1:0)-(a.inProgress?1:0));
   const streak = currentStreak();
   const ach = isAchieved(td);
   const aCnt = tasks.filter(t=>t.priority==='A').length;
@@ -999,12 +1004,13 @@ function renderToday() {
   groups.forEach(([p, label]) => {
     const list = tasks.filter(t => t.priority === p);
     if (!list.length) return;
-    listHtml += `<div class="task-group-label">${label}</div>`;
+    const progN = list.filter(t => !t.done && t.inProgress).length;
+    listHtml += `<div class="task-group-label">${label}${progN ? ` <span style="color:#e07b00">· 진행중 ${progN}</span>` : ''}</div>`;
     list.forEach(t => {
       const wg = t.weeklyGoalId ? D.weeklyGoals.find(g => g.id === t.weeklyGoalId) : null;
       const role = wg ? D.roles.find(r => r.id === wg.roleId) : (t.roleId ? D.roles.find(r=>r.id===t.roleId) : null);
       listHtml += `
-      <div class="task-row ${t.done?'done':''}">
+      <div class="task-row ${t.done?'done':''} ${(!t.done && t.inProgress)?'inprog':''}">
         <button class="chk ${t.done?'on':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</button>
         <button class="pri-badge pri-${t.priority}" onclick="cycleTaskPri('${t.id}')">${t.priority}</button>
         <div class="t-main">
@@ -1012,6 +1018,7 @@ function renderToday() {
           ${wg ? `<div class="t-link"><span class="chip">${role?esc(role.icon):''} ${esc(shorten(wg.title, 22))}</span></div>`
                : role ? `<div class="t-link"><span class="chip">${esc(role.icon)} ${esc(role.name)}</span></div>` : ''}
         </div>
+        <button class="prog-btn ${t.inProgress?'on':''}" onclick="toggleProgress('${t.id}')" title="진행중 표시">${t.inProgress?'▶ 진행중':'진행'}</button>
         <button class="x-btn" id="del_${t.id}" onclick="delTask('${t.id}')">✕</button>
       </div>`;
     });
@@ -1101,6 +1108,7 @@ function addTask() {
 function toggleTask(id) {
   const t = D.dailyTasks.find(t => t.id === id); if (!t) return;
   t.done = !t.done;
+  if (t.done) t.inProgress = false;
   recordAchievement(t.date);
   commit(); renderToday();
   // 완료한 할 일이 빅록에서 온 것이면 → 빅록도 완료할지 제안
@@ -1108,6 +1116,12 @@ function toggleTask(id) {
     const g = D.weeklyGoals.find(g => g.id === t.weeklyGoalId);
     if (g && !g.done) showActionToast('🪨 "' + shorten(g.title, 18) + '" 빅록도 끝났나요?', '빅록 완료', () => completeRock(g.id));
   }
+}
+function toggleProgress(id) {
+  const t = D.dailyTasks.find(t => t.id === id); if (!t) return;
+  t.inProgress = !t.inProgress;
+  if (t.inProgress && t.done) t.done = false;
+  commit(); renderToday();
 }
 function cycleTaskPri(id) {
   const t = D.dailyTasks.find(t => t.id === id); if (!t) return;
@@ -1992,7 +2006,7 @@ function openDayDetail(ds) {
     tasks.forEach(t => {
       html += `<div style="display:flex;gap:8px;align-items:center;padding:5px 0">
         <span class="pri-badge pri-${t.priority}" style="width:22px;height:22px;font-size:11px">${t.priority}</span>
-        <span style="flex:1;font-size:13.5px;${t.done?'':'color:var(--muted)'}">${t.done?'✓ ':''}${esc(t.title)}</span>
+        <span style="flex:1;font-size:13.5px;${t.done?'':'color:var(--muted)'}">${t.done?'✓ ':(t.inProgress?'<span style="color:#e07b00;font-weight:800">▶ 진행중</span> ':'')}${esc(t.title)}</span>
       </div>`;
     });
   } else {
