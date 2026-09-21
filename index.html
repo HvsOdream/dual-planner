@@ -95,7 +95,8 @@ button { cursor: pointer; }
 /* 오늘 2컬럼 (좌: 나침반·일정 / 우: 투두) */
 .today-cols { display: block; }
 @media (min-width: 768px) {
-  .today-cols { display: grid; grid-template-columns: 5fr 7fr; gap: 16px; align-items: start; }
+  .today-cols { display: grid; grid-template-columns: minmax(0,5fr) minmax(0,7fr); gap: 16px; align-items: start; }
+  .tc-left, .tc-right { min-width: 0; }
   .tc-right .task-group-label:first-child { margin-top: 0; }
 }
 /* 오늘 일정 (구글 캘린더) */
@@ -153,6 +154,8 @@ button { cursor: pointer; }
   background: var(--accent); color:#fff; border:none; border-radius: 9px;
   padding: 8px 12px; font-size: 12px; font-weight:700; white-space:nowrap;
 }
+.recover-card .rc-actions { display:flex; gap:6px; align-items:center; }
+.recover-card .rc-x { background: transparent; color: var(--muted); border:1px solid var(--hairline); padding: 8px 10px; }
 .task-group-label { font-size: 11px; font-weight: 800; color: var(--muted); margin: 12px 4px 6px; letter-spacing: .5px; }
 .task-row {
   background: var(--card); border: 1px solid var(--hairline); border-radius: 12px;
@@ -225,7 +228,8 @@ button { cursor: pointer; }
 }
 @media (min-width: 768px) {
   .wrap { max-width: 1400px; padding: 16px 28px 24px; }
-  .week-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .week-panels { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 16px; align-items: start; }
+  .week-panels > * { min-width: 0; }
   .panel-last { display: block !important; }
   .toggle-last { display: none; }
 }
@@ -340,6 +344,7 @@ button { cursor: pointer; }
 .hm-cell.lv2 { background: var(--seq-200); color: var(--text-2); }
 .hm-cell.lv3 { background: var(--seq-350); color: #fff; }
 .hm-cell.lv4 { background: var(--seq-500); color: #fff; font-weight: 700; }
+.hm-cell.rest { background: repeating-linear-gradient(45deg,#f5f7f9,#f5f7f9 4px,#eaeef1 4px,#eaeef1 8px); color: var(--muted); }
 .hm-cell.out { visibility: hidden; }
 .hm-cell.today-ring { box-shadow: 0 0 0 2px var(--primary); }
 .hm-legend { display:flex; align-items:center; gap: 5px; justify-content:flex-end; margin-top: 8px; font-size: 10px; color: var(--muted); }
@@ -503,7 +508,8 @@ function rockExecuted(id) { // 이 빅록에서 보낸 할 일 중 완료된 것
 function emptyData() {
   return { _format:'dual_planner_sync', _version:3, _modified:new Date().toISOString(),
     mission:'', values:'', vision:'', goalsText:'', annualGoals:[], monthlyGoals:[],
-    roles:[], weeklyGoals:[], weeklyCompass:{}, dailyTasks:[], reflections:[], monthlyReviews:{}, dailyMemos:[] };
+    roles:[], weeklyGoals:[], weeklyCompass:{}, dailyTasks:[], reflections:[], monthlyReviews:{}, dailyMemos:[],
+    restDays:[], settings:{ restWeekend:true, streakAlert:true } };
 }
 function migrateV2(v2) {
   const d = emptyData();
@@ -530,6 +536,8 @@ function migrateV2(v2) {
 function normalize(d) {
   const base = emptyData();
   for (const k in base) if (d[k] === undefined) d[k] = base[k];
+  if (!Array.isArray(d.restDays)) d.restDays = [];
+  d.settings = Object.assign({ restWeekend:true, streakAlert:true }, d.settings || {});
   return d;
 }
 // ─── 병합 동기화: 기기별 덮어쓰기 금지, id 기준 합집합 + 최신 기기 우선 ───
@@ -554,6 +562,10 @@ function mergeData(remote, local) {
   out.roles        = remoteNewer ? (remote.roles || []) : (local.roles || []);
   out.reflections  = byKey(remote.reflections  || [], local.reflections  || [], 'date');
   out.dailyMemos   = byKey(remote.dailyMemos   || [], local.dailyMemos   || [], 'id');
+  // 휴식일·설정은 roles와 같은 이유로 "최신 기기가 통째로 교체" (합집합이면 해제해도 되살아남)
+  out.restDays     = remoteNewer ? (remote.restDays || []) : (local.restDays || []);
+  out.settings     = Object.assign({}, remoteNewer ? (local.settings||{}) : (remote.settings||{}),
+                                       remoteNewer ? (remote.settings||{}) : (local.settings||{}));
   const ovl = (r, l) => remoteNewer ? Object.assign({}, l || {}, r || {}) : Object.assign({}, r || {}, l || {});
   out.weeklyCompass  = ovl(remote.weeklyCompass, local.weeklyCompass);
   out.monthlyReviews = ovl(remote.monthlyReviews, local.monthlyReviews);
@@ -672,21 +684,47 @@ function achievedOn(date) {
   if (r) return !!r.achieved;
   return isAchieved(date);
 }
+// ─── 휴식일: 주말(설정 가능) + 사용자가 지정한 공휴일·휴가 ───
+// 휴식일은 "실패"가 아니라 "건너뜀"이다. 기록이 없어도 스트릭이 끊기지 않는다.
+function isRestDay(ds) {
+  if ((D.restDays || []).indexOf(ds) >= 0) return true;
+  if (D.settings && D.settings.restWeekend === false) return false;
+  const g = new Date(ds + 'T00:00:00').getDay();
+  return g === 0 || g === 6;
+}
+// 휴식일을 건너뛰고 직전 '실행일'을 찾는다
+function prevActiveDay(ds) {
+  const d = new Date(ds + 'T00:00:00');
+  let guard = 0;
+  do { d.setDate(d.getDate()-1); } while (isRestDay(dstr(d)) && guard++ < 14);
+  return dstr(d);
+}
 function currentStreak() {
   let n = 0; const d = new Date();
   if (!achievedOn(dstr(d))) d.setDate(d.getDate()-1); // 오늘 미달성은 아직 진행 중으로 간주
-  while (achievedOn(dstr(d))) { n++; d.setDate(d.getDate()-1); }
+  let guard = 0;
+  while (guard++ < 400) {
+    const ds = dstr(d);
+    if (achievedOn(ds)) n++;          // 달성 → 카운트 (휴식일에 달성하면 보너스로 인정)
+    else if (isRestDay(ds)) { }       // 휴식일 미기록 → 끊지 않고 건너뜀
+    else break;                        // 실행일 미달성 → 여기서 종료
+    d.setDate(d.getDate()-1);
+  }
   return n;
 }
 function bestStreak() {
   const days = new Set(D.reflections.filter(r=>r.achieved).map(r=>r.date));
   D.dailyTasks.forEach(t => { if (isAchieved(t.date)) days.add(t.date); });
+  if (!days.size) return 0;
+  const shift = (ds, k) => { const d = new Date(ds+'T00:00:00'); d.setDate(d.getDate()+k); return dstr(d); };
+  // 달성일이 아니면서 휴식일이기만 하면 계속 건너뛴다 (주말을 끼고도 연속으로 인정)
+  const stepBack = ds => { let p = shift(ds,-1), g = 0; while (!days.has(p) && isRestDay(p) && g++ < 14) p = shift(p,-1); return p; };
+  const stepFwd  = ds => { let q = shift(ds, 1), g = 0; while (!days.has(q) && isRestDay(q) && g++ < 14) q = shift(q, 1); return q; };
   let best = 0;
   days.forEach(ds => {
-    const prev = new Date(ds+'T00:00:00'); prev.setDate(prev.getDate()-1);
-    if (days.has(dstr(prev))) return; // 시작점만
-    let n = 0; const d = new Date(ds+'T00:00:00');
-    while (days.has(dstr(d))) { n++; d.setDate(d.getDate()+1); }
+    if (days.has(stepBack(ds))) return; // 시작점만
+    let n = 0, cur = ds, guard = 0;
+    while (days.has(cur) && guard++ < 400) { n++; cur = stepFwd(cur); }
     best = Math.max(best, n);
   });
   return best;
@@ -885,10 +923,14 @@ function renderToday() {
   const wk = getWeekKey(getWeekStart(now));
   const refl = reflectionOf(td);
 
-  // 회복 루프: 그저께는 달성했는데 어제 끊긴 경우
+  // 회복 루프: 직전 '실행일'(주말·휴식일 제외)에 끊긴 경우에만 안내한다
+  const p1 = prevActiveDay(td);          // 가장 최근 실행일
+  const p2 = prevActiveDay(p1);          // 그 앞 실행일
   const y1 = new Date(); y1.setDate(y1.getDate()-1);
-  const y2 = new Date(); y2.setDate(y2.getDate()-2);
-  const broken = streak === 0 && !achievedOn(dstr(y1)) && achievedOn(dstr(y2));
+  const pLabel = (p1 === dstr(y1)) ? '어제' : (Number(p1.slice(5,7)) + '/' + Number(p1.slice(8,10)));
+  const alertOn = !(D.settings && D.settings.streakAlert === false)
+                  && localStorage.getItem('dp3_recover_off') !== td;
+  const broken = alertOn && streak === 0 && !achievedOn(p1) && achievedOn(p2);
 
   let html = `
   <div class="subnav">
@@ -929,8 +971,11 @@ function renderToday() {
   if (ach) html += `<div class="achieved-banner">🎉 오늘 달성! A 미션을 모두 완료했습니다.</div>`;
   if (broken) html += `
     <div class="recover-card">
-      <span>어제 스트릭이 끊겼어요. 괜찮습니다 — 나침반에서 다시 방향을 잡으면 됩니다.</span>
-      <button onclick="goThisWeek();showTab('weekly')">🧭 재시작</button>
+      <span>${pLabel} 스트릭이 끊겼어요. 괜찮습니다 — 나침반에서 이번 주 한 문장부터 다시 잡아보세요.</span>
+      <span class="rc-actions">
+        <button onclick="goThisWeek();showTab('weekly');focusCompassTheme()">🧭 재시작</button>
+        <button class="rc-x" onclick="dismissRecover()" title="오늘은 숨기기">✕</button>
+      </span>
     </div>`;
 
   // ── 2컬럼 시작: 좌측 = 오늘 일정 + 나침반 스트립 ──
@@ -1930,7 +1975,9 @@ function renderRecords() {
     else if (as.length && as.some(t=>t.done)) { lv = 'lv2'; tip += ` · A ${as.filter(t=>t.done).length}/${as.length}`; }
     else if (doneCnt) { lv = 'lv1'; tip += ` · ${doneCnt}개 완료`; }
     else if (!dayTasks.length) { lv = 'lv0'; }
-    html += `<div class="hm-cell ${lv} ${ds===td?'today-ring':''}" title="${tip}" style="cursor:pointer" onclick="openDayDetail('${ds}')">${day}</div>`;
+    let restCls = '';
+    if (!achievedOn(ds) && isRestDay(ds)) { restCls = ' rest'; tip += ' · 휴식일 (스트릭 제외)'; }
+    html += `<div class="hm-cell ${lv}${restCls} ${ds===td?'today-ring':''}" title="${tip}" style="cursor:pointer" onclick="openDayDetail('${ds}')">${day}</div>`;
   }
   html += `</div>
     <div class="hm-legend">적음 <i style="background:#fff"></i><i style="background:var(--seq-100)"></i><i style="background:var(--seq-200)"></i><i style="background:var(--seq-350)"></i><i style="background:var(--seq-500)"></i> 달성</div>
@@ -2035,13 +2082,60 @@ function openDayDetail(ds) {
     html += `<div class="sec-note" style="padding:4px 0 8px">회고가 없습니다.</div>`;
   }
 
+  // 휴식일 지정
+  const isWknd = (d.getDay() === 0 || d.getDay() === 6) && !(D.settings && D.settings.restWeekend === false);
+  const isManual = (D.restDays || []).indexOf(ds) >= 0;
+  html += `<label style="margin-top:10px">🌙 휴식일</label>`;
+  if (isWknd) {
+    html += `<div class="sec-note" style="padding:4px 0 8px">주말은 자동 휴식일입니다 — 기록이 없어도 스트릭이 끊기지 않습니다.</div>`;
+  } else {
+    html += `<div class="sec-note" style="padding:4px 0 8px">${isManual ? '휴식일로 지정되어 스트릭 계산에서 제외됩니다.' : '공휴일·휴가라면 휴식일로 지정해 두세요. 스트릭이 끊기지 않습니다.'}</div>
+      <button class="m-btn" onclick="toggleRestDay('${ds}')">${isManual ? '↩️' : '🌙'} <span>${isManual ? '휴식일 해제' : '휴식일로 지정'}<small>스트릭 계산에서 제외</small></span></button>`;
+  }
+
   html += `<button class="m-cancel" onclick="closeModal()" style="margin-top:12px">닫기</button>`;
   openModal(html);
+}
+function toggleRestDay(ds) {
+  D.restDays = D.restDays || [];
+  const i = D.restDays.indexOf(ds);
+  if (i >= 0) D.restDays.splice(i, 1); else D.restDays.push(ds);
+  D._modified = new Date().toISOString(); persist(); _dirty = true;
+  closeModal(); renderAll();
+  showToast(i >= 0 ? '휴식일을 해제했습니다' : '🌙 휴식일로 지정했습니다');
+}
+function dismissRecover() {
+  try { localStorage.setItem('dp3_recover_off', todayStr()); } catch(e) {}
+  renderToday();
+  showToast('오늘은 숨겼습니다 · 완전히 끄려면 ⚙️ → 스트릭 복구 알림');
+}
+function focusCompassTheme() {
+  setTimeout(() => {
+    const el = document.getElementById('cmp_theme');
+    if (el) { try { el.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(e) {} el.focus(); }
+  }, 250);
+}
+function toggleStreakAlert() {
+  D.settings.streakAlert = (D.settings.streakAlert === false);
+  D._modified = new Date().toISOString(); persist(); _dirty = true;
+  renderAll(); closeModal(); openDataModal();
+  showToast(D.settings.streakAlert ? '🔔 스트릭 복구 알림 켜짐' : '🔕 스트릭 복구 알림 꺼짐');
+}
+function toggleRestWeekend() {
+  D.settings.restWeekend = (D.settings.restWeekend === false);
+  D._modified = new Date().toISOString(); persist(); _dirty = true;
+  renderAll(); closeModal(); openDataModal();
+  showToast(D.settings.restWeekend ? '🌙 주말은 스트릭에서 제외됩니다' : '주말도 스트릭에 포함됩니다');
 }
 
 // ═══════════════════ 데이터 모달 (내보내기/가져오기) ═══════════════════
 function openDataModal() {
-  openModal(`<h3>⚙️ 데이터</h3>
+  const sw = !(D.settings && D.settings.restWeekend === false);
+  const sa = !(D.settings && D.settings.streakAlert === false);
+  openModal(`<h3>⚙️ 설정 · 데이터</h3>
+    <button class="m-btn" onclick="toggleRestWeekend()">🌙 <span>주말 휴식일 — ${sw ? '켜짐' : '꺼짐'}<small>토·일은 기록이 없어도 스트릭을 끊지 않음</small></span></button>
+    <button class="m-btn" onclick="toggleStreakAlert()">${sa ? '🔔' : '🔕'} <span>스트릭 복구 알림 — ${sa ? '켜짐' : '꺼짐'}<small>끊긴 다음 날 오늘 화면에 안내 카드 표시</small></span></button>
+    <div class="sec-note" style="margin:6px 0 10px">공휴일·휴가는 📊 기록에서 날짜를 눌러 '휴식일로 지정'하면 제외됩니다.</div>
     <button class="m-btn" onclick="cloudSync(true);closeModal()">☁️ <span>지금 동기화<small>Google Drive와 즉시 동기화</small></span></button>
     <button class="m-btn" onclick="exportJSON()">📤 <span>내보내기<small>JSON 파일 백업 (v3 포맷)</small></span></button>
     <button class="m-btn" onclick="document.getElementById('importFile').click()">📥 <span>가져오기<small>v2/v3 JSON 파일 불러오기</small></span></button>
