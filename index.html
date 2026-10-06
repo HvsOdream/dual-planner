@@ -401,6 +401,25 @@ button { cursor: pointer; }
   padding: 6px 12px; font-size: 12.5px; font-weight: 800; white-space: nowrap;
 }
 .done-chip { display:inline-flex; align-items:center; gap:3px; font-size:10.5px; font-weight:800; color: var(--good); }
+
+/* ─── 루틴 체크 · 코치 노트 ─── */
+.tog-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.tog-chip { border:1px solid var(--border); background:#fff; color: var(--text-2); border-radius: 999px; font-size: 12.5px; font-weight: 700; padding: 8px 12px; display:inline-flex; align-items:center; gap:5px; }
+.tog-chip small { font-size: 10.5px; font-weight: 700; opacity: .7; }
+.tog-chip.on { background: var(--primary); border-color: var(--primary); color:#fff; }
+.coach-card { border-left: 4px solid var(--accent); }
+.coach-title { font-size: 13.5px; font-weight: 800; margin: 2px 0 6px; }
+.coach-item { display:flex; gap:8px; font-size: 13px; line-height: 1.5; padding: 3px 0; }
+.coach-item i { font-style: normal; color: var(--accent); font-weight: 800; flex-shrink:0; }
+.hw-table { width:100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; table-layout: fixed; }
+.hw-table th { font-size: 10.5px; color: var(--muted); font-weight: 700; padding: 4px 2px; text-align:center; line-height: 1.3; }
+.hw-table td { padding: 6px 2px; text-align:center; border-top: 1px solid var(--border); }
+.hw-table .rl { text-align:left; font-weight: 700; white-space: nowrap; width: 82px; }
+.hw-table th:last-child { width: 58px; }
+.hw-table td.tot { font-weight: 800; white-space: nowrap; }
+.hw-table td.hit { color: var(--good); }
+.hw-on { color: var(--primary); font-weight: 800; }
+.hw-off { color: #c9c8c1; }
 </style>
 </head>
 <body>
@@ -509,7 +528,7 @@ function emptyData() {
   return { _format:'dual_planner_sync', _version:3, _modified:new Date().toISOString(),
     mission:'', values:'', vision:'', goalsText:'', annualGoals:[], monthlyGoals:[],
     roles:[], weeklyGoals:[], weeklyCompass:{}, dailyTasks:[], reflections:[], monthlyReviews:{}, dailyMemos:[],
-    restDays:[], settings:{ restWeekend:true, streakAlert:true } };
+    restDays:[], settings:{ restWeekend:true, streakAlert:true }, dailyLogs:[] };
 }
 function migrateV2(v2) {
   const d = emptyData();
@@ -537,6 +556,7 @@ function normalize(d) {
   const base = emptyData();
   for (const k in base) if (d[k] === undefined) d[k] = base[k];
   if (!Array.isArray(d.restDays)) d.restDays = [];
+  if (!Array.isArray(d.dailyLogs)) d.dailyLogs = [];
   d.settings = Object.assign({ restWeekend:true, streakAlert:true }, d.settings || {});
   return d;
 }
@@ -562,6 +582,14 @@ function mergeData(remote, local) {
   out.roles        = remoteNewer ? (remote.roles || []) : (local.roles || []);
   out.reflections  = byKey(remote.reflections  || [], local.reflections  || [], 'date');
   out.dailyMemos   = byKey(remote.dailyMemos   || [], local.dailyMemos   || [], 'id');
+  // 루틴 체크: 기기 단위가 아니라 날짜별로 더 최근에 고친 쪽(u)을 남긴다
+  const byStamp = (rArr, lArr) => {
+    const map = new Map();
+    (rArr || []).forEach(x => x && x.date && map.set(x.date, x));
+    (lArr || []).forEach(x => { if (!x || !x.date) return; const o = map.get(x.date); if (!o || (x.u || '') >= (o.u || '')) map.set(x.date, x); });
+    return [...map.values()];
+  };
+  out.dailyLogs = byStamp(remote.dailyLogs, local.dailyLogs);
   // 휴식일·설정은 roles와 같은 이유로 "최신 기기가 통째로 교체" (합집합이면 해제해도 되살아남)
   out.restDays     = remoteNewer ? (remote.restDays || []) : (local.restDays || []);
   out.settings     = Object.assign({}, remoteNewer ? (local.settings||{}) : (remote.settings||{}),
@@ -760,6 +788,9 @@ function renderAll() { renderToday(); renderWeekly(); renderGoals(); renderRecor
 
 // ═══════════════════ AI 추천 (일요일 정기 생성 → Drive planner_suggestions.json) ═══════════════════
 let _sugg = null;
+// 코치 노트: 일요일 추천이 파일을 새로 만들어 coach 키가 빠져도 마지막 노트를 기기에 남겨 둔다
+let _coach = null;
+try { _coach = JSON.parse(localStorage.getItem('dp3_coach') || 'null'); } catch(e) {}
 try { const _sc = JSON.parse(localStorage.getItem('dp3_sugg') || 'null'); if (_sc) _sugg = _sc; } catch(e) {}
 async function fetchSuggestions() {
   if (!CLOUD_SYNC_URL) return;
@@ -768,6 +799,11 @@ async function fetchSuggestions() {
     const r = await res.json();
     if (r.status === 'ok' && r.data) {
       _sugg = r.data;
+      if (r.data.coach && JSON.stringify(r.data.coach) !== JSON.stringify(_coach)) {
+        _coach = r.data.coach;
+        try { localStorage.setItem('dp3_coach', JSON.stringify(_coach)); } catch(e) {}
+        renderToday();
+      }
       try { localStorage.setItem('dp3_sugg', JSON.stringify(r.data)); } catch(e) {}
       renderWeekly();
     }
@@ -1018,6 +1054,8 @@ function renderToday() {
     html += `</div>`;
   }
 
+  html += coachCardHtml();
+
   // ── 우측 = 투두리스트 + 회고 ──
   html += `</div><div class="tc-right">`;
 
@@ -1079,6 +1117,8 @@ function renderToday() {
     <input id="newTaskInput" placeholder="할 일 추가..." onkeydown="if(event.key==='Enter')addTask()">
     <button class="go" onclick="addTask()">추가</button>
   </div>
+
+  <div class="card" id="routineBox" style="margin-top:16px">${routineCardInner(td)}</div>
 
   <div class="card reflect-box" style="margin-top:16px">
     <h3>🌙 저녁 회고 <span class="sec-note">한 줄이면 충분합니다</span></h3>
@@ -1227,6 +1267,88 @@ function saveReflection() {
   commit();
   document.getElementById('reflectSaved').textContent = text ? '기록됨 ✓' : '';
   showToast('🌙 회고 저장 완료');
+}
+
+// ═══════════════════ 루틴 체크 · 코치 노트 ═══════════════════
+// dailyLogs: [{ date, routines:{id:bool}, u }] — 루틴을 했는지만 기록한다.
+// 체중·혈압·식단 같은 건강 수치는 플래너에 저장하지 않는다. Claude가 따로 보고 코치 노트(할 일)만 남긴다.
+const ROUTINE_DEFS = [
+  { id:'run',  icon:'🏃', name:'러닝', target:2 },
+  { id:'body', icon:'💪', name:'맨몸', target:3 },
+  { id:'eng',  icon:'🗣', name:'영어', target:5 },
+  { id:'read', icon:'📖', name:'독서', target:3 },
+];
+function logOf(date) { return (D.dailyLogs || []).find(l => l.date === date) || null; }
+function ensureLog(date) { // 쓰기 시에만 생성
+  if (!Array.isArray(D.dailyLogs)) D.dailyLogs = [];
+  let l = logOf(date);
+  if (!l) { l = { date, routines:{} }; D.dailyLogs.push(l); }
+  if (!l.routines) l.routines = {};
+  l.u = new Date().toISOString();
+  return l;
+}
+function routineDone(l, id) { return !!(l && l.routines && l.routines[id]); }
+function routineWeekCount(id, ws) {
+  return weekDates(ws || getWeekStart(new Date())).filter(d => routineDone(logOf(dstr(d)), id)).length;
+}
+function routineCardInner(td) {
+  const l = logOf(td);
+  return `<h3>✅ 오늘 루틴 <span class="sec-note">숫자는 이번 주 횟수/목표</span></h3>
+  <div class="tog-row">` + ROUTINE_DEFS.map(r =>
+    `<button class="tog-chip ${routineDone(l, r.id) ? 'on' : ''}" aria-pressed="${routineDone(l, r.id)}" onclick="toggleRoutine('${r.id}')">${r.icon} ${r.name} <small>${routineWeekCount(r.id)}/${r.target}</small></button>`
+  ).join('') + `</div>`;
+}
+function toggleRoutine(id) {
+  const l = ensureLog(todayStr());
+  l.routines[id] = !l.routines[id];
+  commit();
+  const el = document.getElementById('routineBox');
+  if (el) el.innerHTML = routineCardInner(todayStr());
+}
+// 코치 노트: { updated:'YYYY-MM-DD', title:'', items:['...'], note:'' }
+function coachCardHtml() {
+  if (!_coach || !Array.isArray(_coach.items) || !_coach.items.length) return '';
+  let when = '';
+  if (_coach.updated) {
+    const days = Math.round((new Date(todayStr() + 'T00:00:00') - new Date(_coach.updated + 'T00:00:00')) / 86400000);
+    when = days <= 0 ? '오늘 갱신' : days + '일 전 갱신';
+  }
+  return `<div class="card strip-card coach-card">
+    <h3>🩺 코치 노트 <span class="sec-note">${esc(when)}</span></h3>
+    ${_coach.title ? `<div class="coach-title">${esc(_coach.title)}</div>` : ''}
+    ${_coach.items.map(t => `<div class="coach-item"><i>›</i><span>${esc(t)}</span></div>`).join('')}
+    ${_coach.note ? `<div class="sec-note" style="margin-top:6px">${esc(_coach.note)}</div>` : ''}
+  </div>`;
+}
+// 기록 탭: 주간 루틴 표
+let hwOff = 0;
+function moveHW(n) { hwOff = Math.min(0, hwOff + n); renderRecords(); }
+function routineRecordsHtml() {
+  const ws = getWeekStart(new Date()); ws.setDate(ws.getDate() + 7 * hwOff);
+  const ds = weekDates(ws); const td = todayStr();
+  const logs = ds.map(d => logOf(dstr(d)));
+  const dot = '<span class="hw-off">·</span>';
+  let h = `<div class="card">
+    <div class="hm-nav">
+      <button class="wnav-btn" onclick="moveHW(-1)" aria-label="이전 주">‹</button>
+      <span class="m-label">✅ 루틴 <span class="sec-note">${fmtMD(ds[0])}~${fmtMD(ds[6])}${hwOff === 0 ? ' · 이번 주' : ''}</span></span>
+      <button class="wnav-btn" onclick="moveHW(1)" aria-label="다음 주" ${hwOff === 0 ? 'disabled style="opacity:.3"' : ''}>›</button>
+    </div>
+    <table class="hw-table">
+      <tr><th class="rl"></th>${ds.map((d, i) => `<th${dstr(d) === td ? ' style="color:var(--primary)"' : ''}>${DOW[i]}<br>${d.getDate()}</th>`).join('')}<th>합계</th></tr>`;
+  ROUTINE_DEFS.forEach(r => {
+    const n = logs.filter(l => routineDone(l, r.id)).length;
+    h += `<tr><td class="rl">${r.icon} ${r.name}</td>${logs.map(l => `<td>${routineDone(l, r.id) ? '<span class="hw-on">✓</span>' : dot}</td>`).join('')}<td class="tot${n >= r.target ? ' hit' : ''}">${n}/${r.target}</td></tr>`;
+  });
+  return h + `</table>
+    <div class="sec-note" style="margin-top:8px;text-align:center">오늘 화면의 ✅ 오늘 루틴에서 체크합니다</div>
+  </div>`;
+}
+function dayRoutineHtml(ds) { // 날짜 상세 모달용 (읽기 전용)
+  const l = logOf(ds);
+  const tags = ROUTINE_DEFS.filter(r => routineDone(l, r.id)).map(r => r.icon + ' ' + r.name);
+  return `<label style="margin-top:10px">✅ 루틴</label>
+    <div class="sec-note" style="padding:4px 0 8px">${tags.length ? tags.join(' · ') : '체크한 루틴이 없습니다.'}</div>`;
 }
 
 // ═══════════════════ ② 주간 나침반 ═══════════════════
@@ -1984,6 +2106,8 @@ function renderRecords() {
     <div class="sec-note" style="margin-top:6px;text-align:center">날짜를 누르면 그날의 기록을 볼 수 있습니다</div>
   </div>`;
 
+  html += routineRecordsHtml();
+
   // 목표별 달성률
   const goalRows = D.annualGoals.map(ag => {
     const mgs = D.monthlyGoals.filter(m => m.goalId === ag.id);
@@ -2081,6 +2205,8 @@ function openDayDetail(ds) {
   } else {
     html += `<div class="sec-note" style="padding:4px 0 8px">회고가 없습니다.</div>`;
   }
+
+  html += dayRoutineHtml(ds);
 
   // 휴식일 지정
   const isWknd = (d.getDay() === 0 || d.getDay() === 6) && !(D.settings && D.settings.restWeekend === false);
