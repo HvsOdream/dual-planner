@@ -323,6 +323,24 @@ button { cursor: pointer; }
 .role-edit-row .ds { color: var(--muted); font-size: 11px; }
 
 /* ─── 기록 ─── */
+
+/* ── 🏆 달성 ── */
+.achv-year { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:10px; }
+.achv-year .m-label { font-size:15px; font-weight:800; }
+.achv-month { margin-bottom: 12px; }
+.achv-month h3 { display:flex; align-items:baseline; gap:8px; }
+.achv-month h3 .cnt { font-size:11px; color:var(--muted); font-weight:600; }
+.achv-sec { font-size:11px; font-weight:800; color:var(--muted); margin:10px 0 4px; letter-spacing:.2px; }
+.achv-row { display:flex; gap:8px; align-items:flex-start; padding:5px 0; border-bottom:1px solid var(--hairline); font-size:13px; }
+.achv-row:last-child { border-bottom:0; }
+.achv-row .ck { color:var(--good); font-weight:800; flex-shrink:0; }
+.achv-row .ck.part { color:var(--pb); }
+.achv-row .goal-tag { font-size:10px; padding:1px 6px; }
+.achv-row .ttl { flex:1; min-width:0; word-break:break-all; }
+.achv-row .n { font-size:10px; color:var(--muted); font-weight:700; flex-shrink:0; background:var(--bg); border-radius:6px; padding:1px 6px; }
+.achv-role { font-size:11px; font-weight:700; color:var(--primary); margin:6px 0 0; }
+.achv-note { font-size:12.5px; color:var(--text-2); background:var(--bg); border-radius:10px; padding:8px 10px; margin-top:8px; white-space:pre-wrap; }
+.achv-empty { font-size:12px; color:var(--muted); padding:4px 0; }
 .stat-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 @media (min-width: 768px) { .stat-grid { grid-template-columns: repeat(4, 1fr); } }
 .stat-tile { background: var(--card); border:1px solid var(--hairline); border-radius: var(--radius); box-shadow: var(--shadow); padding: 12px 14px; }
@@ -459,6 +477,7 @@ button { cursor: pointer; }
 
 <!-- ═══════ ④ 기록 ═══════ -->
 <div class="page" id="page-records"><div class="wrap" id="recordsWrap"></div></div>
+<div class="page" id="page-achv"><div class="wrap" id="achvWrap"></div></div>
 
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
@@ -606,6 +625,9 @@ function mergeData(remote, local) {
 
 let D = null;
 let _dirty = false;
+// 삭제 묘비: 합집합 병합(mergeData)에서 되살아나지 않도록 지우지 않고 _deleted 표시만 한다
+function liveAG() { return D.annualGoals.filter(a => a && !a._deleted); }
+function liveMG() { return D.monthlyGoals.filter(m => m && !m._deleted); }
 (function initData() {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -784,7 +806,7 @@ function planNextWeek() {
   curWeekStart.setDate(curWeekStart.getDate() + 7);
   showTab('weekly');
 }
-function renderAll() { renderToday(); renderWeekly(); renderGoals(); renderRecords(); }
+function renderAll() { renderToday(); renderWeekly(); renderGoals(); renderRecords(); renderAchv(); }
 
 // ═══════════════════ AI 추천 (일요일 정기 생성 → Drive planner_suggestions.json) ═══════════════════
 let _sugg = null;
@@ -823,7 +845,7 @@ function adoptSugg(idx) {
 function adoptSuggAnnual(idx) {
   if (!_sugg || !_sugg.annual || !_sugg.annual[idx]) return;
   const s = _sugg.annual[idx];
-  if (D.annualGoals.some(a => a.title === s.title)) { showToast('이미 있는 목표입니다'); return; }
+  if (liveAG().some(a => a.title === s.title)) { showToast('이미 있는 목표입니다'); return; }
   D.annualGoals.push({ id: uid('ag_'), tag: s.tag || '', title: s.title, year: new Date().getFullYear() });
   commit(); showToast('🤖 연간 목표로 채택했습니다 — 목표 탭에서 확인하세요');
   renderWeekly();
@@ -831,14 +853,14 @@ function adoptSuggAnnual(idx) {
 function adoptSuggMonthly(idx) {
   if (!_sugg || !_sugg.monthly || !_sugg.monthly[idx]) return;
   const s = _sugg.monthly[idx];
-  const ag = D.annualGoals.find(a => a.tag === s.tag);
+  const ag = liveAG().find(a => a.tag === s.tag);
   if (!ag) { showToast('연결할 연간 목표(태그: ' + (s.tag||'?') + ')를 찾지 못했습니다'); return; }
   D.monthlyGoals.push({ id: uid('mg_'), month: s.month, goalId: ag.id, title: s.title, progress: 0 });
   commit(); showToast('🤖 월간 목표로 채택했습니다');
   renderAll();
 }
 function suggCardHtml(wk) {
-  if (!D.annualGoals.length) {
+  if (!liveAG().length) {
     return `<div class="card strip-card">
       <h3>🤖 AI 추천</h3>
       <div class="sec-note">연간 목표(큰 목표)가 아직 없습니다. 큰 목표를 먼저 정하면 매주 일요일 오후, 목표에 맞는 월간·주간 빅록 추천이 도착합니다.</div>
@@ -864,7 +886,7 @@ function suggCardHtml(wk) {
   if (mos.length) {
     html += `<div class="task-group-label" style="margin:10px 0 4px">월간 목표 추천</div>`;
     mos.forEach((s, i) => {
-      const adopted = D.monthlyGoals.some(m => m.month === s.month && m.title === s.title);
+      const adopted = liveMG().some(m => m.month === s.month && m.title === s.title);
       html += `<div class="strip-row" style="align-items:flex-start">
         <div class="t-main">
           <div class="t-title" style="font-size:13px">[${esc(s.tag||'')}] ${esc(s.title)} <span class="sec-note">${esc(s.month||'')}</span></div>
@@ -878,7 +900,7 @@ function suggCardHtml(wk) {
   if (ans.length) {
     html += `<div class="task-group-label" style="margin:10px 0 4px">연간 목표 추천 <span class="sec-note" style="font-weight:500">비어 있는 영역 제안</span></div>`;
     ans.forEach((s, i) => {
-      const adopted = D.annualGoals.some(a => a.title === s.title);
+      const adopted = liveAG().some(a => a.title === s.title);
       html += `<div class="strip-row" style="align-items:flex-start">
         <div class="t-main">
           <div class="t-title" style="font-size:13px">🎯 [${esc(s.tag||'')}] ${esc(s.title)}</div>
@@ -973,6 +995,7 @@ function renderToday() {
     <button class="nav-chip" onclick="goThisWeek();showTab('weekly')">🧭 나침반</button>
     <button class="nav-chip" onclick="showTab('goals')">🎯 목표</button>
     <button class="nav-chip" onclick="showTab('records')">📊 기록</button>
+    <button class="nav-chip" onclick="showTab('achv')">🏆 달성</button>
     <span class="spacer"></span>
     <a class="nav-chip ext" href="https://calendar.google.com/" target="_blank" rel="noopener">📅 구글캘린더</a>
     <a class="nav-chip ext" href="https://gw.seoil.ac.kr/" target="_blank" rel="noopener">🏫 그룹웨어</a>
@@ -1431,7 +1454,7 @@ function weekPanelHtml(wk, ws, readonly) {
             ${mg ? `<span class="chip">🎯 ${esc(shorten((ag?'['+ag.tag+'] ':'')+mg.title, 20))}</span>` : ''}
             ${!g.done && rockExecuted(g.id) ? `<span class="done-chip">✓ 오늘 실행됨 — 끝났으면 체크</span>` : ''}
           </div>
-          ${!readonly && !mg && D.monthlyGoals.length ? monthGoalSelect(g) : ''}
+          ${!readonly && !mg && liveMG().length ? monthGoalSelect(g) : ''}
         </div>
         ${readonly ? '' : `<div class="wg-actions">
           <button class="mini-btn send" onclick="sendToToday('${g.id}')">오늘로</button>
@@ -1504,7 +1527,7 @@ function originWeekOf(g) {
   return cur ? cur.week : g.week;
 }
 function monthGoalSelect(g) {
-  const opts = D.monthlyGoals.map(m => {
+  const opts = liveMG().map(m => {
     const ag = D.annualGoals.find(a => a.id === m.goalId);
     return `<option value="${m.id}">${esc((ag?'['+ag.tag+'] ':'') + m.title)} (${esc(m.month)})</option>`;
   }).join('');
@@ -1655,8 +1678,8 @@ function openMonthlyReview(m) {
   const saved = D.monthlyReviews[m];
   const note = _mrNoteTmp !== null ? _mrNoteTmp : (saved ? saved.note : '');
   let rows = '';
-  D.annualGoals.forEach(ag => {
-    const mgs = D.monthlyGoals.filter(g => g.goalId === ag.id && g.month === m);
+  liveAG().forEach(ag => {
+    const mgs = liveMG().filter(g => g.goalId === ag.id && g.month === m);
     if (!mgs.length) return;
     mgs.forEach(g => {
       rows += `<div class="mg-row">
@@ -1680,7 +1703,7 @@ function openMonthlyReview(m) {
   if (_sugg && (_sugg.monthly || []).some(s => s.month === nextM)) {
     (_sugg.monthly || []).forEach((s, i) => {
       if (s.month !== nextM) return;
-      const adopted = D.monthlyGoals.some(g => g.month === s.month && g.title === s.title);
+      const adopted = liveMG().some(g => g.month === s.month && g.title === s.title);
       suggRows += `<div class="strip-row">
         <span class="yday-title">[${esc(s.tag)}] ${esc(s.title)}</span>
         ${adopted ? `<span class="strip-sent">✓</span>` : `<button class="mini-btn send" onclick="adoptSuggMonthly(${i});openMonthlyReview('${m}')">채택</button>`}
@@ -1725,8 +1748,8 @@ function renderGoals() {
     <button class="v-edit" style="margin-left:6px" onclick="openMonthlyReview()">📆 월간 점검</button>
   </div>`;
 
-  D.annualGoals.forEach(ag => {
-    const mgs = D.monthlyGoals.filter(m => m.goalId === ag.id).sort((a,b) => a.month.localeCompare(b.month));
+  liveAG().forEach(ag => {
+    const mgs = liveMG().filter(m => m.goalId === ag.id).sort((a,b) => a.month.localeCompare(b.month));
     const wkRocks = D.weeklyGoals.filter(g => g.week === curWk && g.monthlyGoalId && mgs.some(m => m.id === g.monthlyGoalId));
     html += `<div class="card goal-card">
       <div class="goal-head">
@@ -1761,7 +1784,7 @@ function renderGoals() {
     if (_sugg && Array.isArray(_sugg.monthly)) {
       _sugg.monthly.forEach((s, i) => {
         if (s.tag !== ag.tag) return;
-        if (D.monthlyGoals.some(m => m.month === s.month && m.title === s.title)) return;
+        if (liveMG().some(m => m.month === s.month && m.title === s.title)) return;
         html += `<div class="strip-row" style="align-items:flex-start;border-top:1px dashed var(--border);margin-top:6px;padding-top:8px">
           <div class="t-main">
             <div class="t-title" style="font-size:12.5px">🤖 ${esc(s.title)} <span class="sec-note">${esc(s.month)}</span></div>
@@ -1810,7 +1833,7 @@ function delMonthlyGoal(id) {
     setTimeout(() => { if (btn.isConnected) { btn.classList.remove('confirm'); btn.textContent = '✕'; } }, 2500);
     return;
   }
-  D.monthlyGoals = D.monthlyGoals.filter(m => m.id !== id);
+  D.monthlyGoals.forEach(m => { if (m.id === id) m._deleted = true; });
   D.weeklyGoals.forEach(g => { if (g.monthlyGoalId === id) g.monthlyGoalId = null; });
   commit(); renderGoals();
 }
@@ -1971,9 +1994,9 @@ function saveAnnualGoal(id) {
 }
 function deleteAnnualGoal(id) {
   const mgIds = D.monthlyGoals.filter(m => m.goalId === id).map(m => m.id);
-  D.monthlyGoals = D.monthlyGoals.filter(m => m.goalId !== id);
+  D.monthlyGoals.forEach(m => { if (m.goalId === id) m._deleted = true; });
   D.weeklyGoals.forEach(g => { if (mgIds.includes(g.monthlyGoalId)) g.monthlyGoalId = null; });
-  D.annualGoals = D.annualGoals.filter(a => a.id !== id);
+  D.annualGoals.forEach(a => { if (a.id === id) a._deleted = true; });
   commit(); closeModal(); renderGoals();
 }
 function addMonthlyGoal(goalId) { editMonthlyGoalForm(null, goalId); }
@@ -2028,6 +2051,93 @@ function saveRole(id) {
 function deleteRole(id) {
   D.roles = D.roles.filter(r => r.id !== id);
   commit(); closeModal(); renderGoals(); renderWeekly();
+}
+
+
+// ═══════════════════ ⑤ 달성 (올해 한 것 한눈에) ═══════════════════
+var achvYear = new Date().getFullYear();
+function moveAchvYear(n) { achvYear += n; renderAchv(); }
+function renderAchv() {
+  const wrap = document.getElementById('achvWrap'); if (!wrap) return;
+  const Y = String(achvYear);
+  const rn = id => { const r = D.roles.find(x => x.id === id); return r ? (r.icon ? r.icon + ' ' : '') + r.name : '기타'; };
+  const mgs = liveMG().filter(m => m.month.startsWith(Y));
+  const mgDone = mgs.filter(m => (m.progress|0) >= 100);
+  const rocksY = D.weeklyGoals.filter(g => g.week.startsWith(Y));
+  const rocksDone = rocksY.filter(g => g.done);
+  // 같은 제목의 반복 빅록(주간 루틴)은 하나로 묶어 횟수로 센다
+  const distinct = arr => { const m = new Map(); arr.forEach(g => { const k = g.title.trim(); const o = m.get(k); if (o) o.n++; else m.set(k, { g, n: 1 }); }); return [...m.values()]; };
+  const weeks = [...new Set(rocksY.map(g => g.week))];
+  const compassWeeks = weeks.filter(w => compassDone(w)).length;
+  const td = todayStr(); let achDays = 0;
+  for (let d = new Date(achvYear, 0, 1); dstr(d) <= td && d.getFullYear() === achvYear; d.setDate(d.getDate() + 1)) if (achievedOn(dstr(d))) achDays++;
+
+  let html = `
+  <div class="subnav"><button class="nav-chip back" onclick="showTab('today')">‹ 오늘</button><span class="pgtitle">🏆 달성</span></div>
+  <div class="achv-year"><button class="wnav-btn" onclick="moveAchvYear(-1)">‹</button><span class="m-label">${Y}년 한 일</span><button class="wnav-btn" onclick="moveAchvYear(1)">›</button></div>
+  <div class="stat-grid">
+    <div class="stat-tile"><div class="lbl">🎯 월간 목표 완료</div><div class="val">${mgDone.length}</div><div class="sub">전체 ${mgs.length}개 중</div></div>
+    <div class="stat-tile"><div class="lbl">🪨 빅록 완료</div><div class="val">${distinct(rocksDone).length}</div><div class="sub">반복 포함 ${rocksDone.length}건 / 전체 ${rocksY.length}건</div></div>
+    <div class="stat-tile"><div class="lbl">🧭 나침반 쓴 주</div><div class="val">${compassWeeks}주</div><div class="sub">기록 있는 ${weeks.length}주 중</div></div>
+    <div class="stat-tile"><div class="lbl">📅 달성일</div><div class="val">${achDays}일</div><div class="sub">${Y}년 오늘까지</div></div>
+  </div>`;
+
+  // 연간 목표별 진척
+  const ags = liveAG().filter(a => !a.year || String(a.year) === Y);
+  if (ags.length) {
+    html += `<div class="card"><h3>🎯 연간 목표별 진척 <span class="sec-note">월간 목표 완료 수</span></h3>`;
+    ags.forEach(ag => {
+      const my = mgs.filter(m => m.goalId === ag.id);
+      const done = my.filter(m => (m.progress|0) >= 100).length;
+      const pct = my.length ? Math.round(my.reduce((s,m)=>s+Math.min(100,m.progress|0),0)/my.length) : 0;
+      html += `<div class="gr-row">
+        <div class="gr-top"><span class="gr-name">[${esc(ag.tag)}] ${esc(shorten(ag.title, 34))}</span><span class="gr-pct">${done}/${my.length} <span style="font-weight:500;color:var(--muted)">${pct}%</span></span></div>
+        <div class="pbar"><div style="width:${pct}%"></div></div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  // 월별 달성 내용 (최근 달부터)
+  const months = [...new Set([...mgs.map(m => m.month), ...rocksDone.map(g => weekMonth(g.week)), ...Object.keys(D.monthlyReviews||{}).filter(k => k.startsWith(Y))])].sort().reverse();
+  if (!months.length) html += `<div class="card"><div class="achv-empty">${Y}년 기록이 아직 없습니다.</div></div>`;
+  months.forEach(m => {
+    const mm = mgs.filter(x => x.month === m).sort((a,b) => (b.progress|0)-(a.progress|0));
+    const rd = distinct(rocksDone.filter(g => weekMonth(g.week) === m));
+    const rev = (D.monthlyReviews||{})[m];
+    html += `<div class="card achv-month"><h3>${Number(m.slice(5,7))}월 <span class="cnt">월간 ${mm.filter(x=>(x.progress|0)>=100).length}/${mm.length} · 빅록 ${rd.length}</span></h3>`;
+    if (mm.length) {
+      html += `<div class="achv-sec">월간 목표</div>`;
+      mm.forEach(x => {
+        const ag = liveAG().find(a => a.id === x.goalId);
+        const p = x.progress|0;
+        html += `<div class="achv-row"><span class="ck ${p>=100?'':'part'}">${p>=100?'✓':p+'%'}</span>${ag?`<span class="goal-tag">${esc(ag.tag)}</span>`:''}<span class="ttl">${esc(x.title)}</span></div>`;
+      });
+    }
+    if (rd.length) {
+      html += `<div class="achv-sec">완료한 빅록</div>`;
+      const byRole = new Map();
+      rd.forEach(({g, n}) => { const k = rn(g.roleId); if (!byRole.has(k)) byRole.set(k, []); byRole.get(k).push({g, n}); });
+      [...byRole.entries()].forEach(([role, list]) => {
+        html += `<div class="achv-role">${esc(role)}</div>`;
+        list.forEach(({g, n}) => { html += `<div class="achv-row"><span class="ck">✓</span><span class="ttl">${esc(g.title)}</span>${n>1?`<span class="n">×${n}</span>`:''}</div>`; });
+      });
+    }
+    if (rev && rev.note) html += `<div class="achv-sec">월간 점검</div><div class="achv-note">${esc(rev.note)}</div>`;
+    html += `</div>`;
+  });
+  wrap.innerHTML = html;
+}
+// 주차 키(getWeekKey 규칙)의 목요일이 속한 달 — 앱의 주차 규칙을 그대로 따른다
+const _wkMonth = {};
+function weekMonth(wk) {
+  if (_wkMonth[wk]) return _wkMonth[wk];
+  const y = Number(wk.slice(0,4));
+  for (let d = new Date(y, 0, 1); d.getFullYear() === y; d.setDate(d.getDate()+7)) {
+    const ws = getWeekStart(d); const k = getWeekKey(ws);
+    if (!_wkMonth[k]) { const thu = new Date(ws); thu.setDate(ws.getDate()+3); _wkMonth[k] = thu.getFullYear() + '-' + String(thu.getMonth()+1).padStart(2,'0'); }
+  }
+  return _wkMonth[wk] || wk.slice(0,4) + '-01';
 }
 
 // ═══════════════════ ④ 기록 ═══════════════════
@@ -2109,8 +2219,8 @@ function renderRecords() {
   html += routineRecordsHtml();
 
   // 목표별 달성률
-  const goalRows = D.annualGoals.map(ag => {
-    const mgs = D.monthlyGoals.filter(m => m.goalId === ag.id);
+  const goalRows = liveAG().map(ag => {
+    const mgs = liveMG().filter(m => m.goalId === ag.id);
     if (!mgs.length) return null;
     const avg = Math.round(mgs.reduce((s,m)=>s+(m.progress|0),0) / mgs.length);
     return { ag, avg, n: mgs.length };
