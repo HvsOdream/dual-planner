@@ -637,6 +637,9 @@ let _dirty = false;
 function liveAG() { return D.annualGoals.filter(a => a && !a._deleted); }
 function liveMG() { return D.monthlyGoals.filter(m => m && !m._deleted); }
 function liveRoles() { return D.roles.filter(r => r && !r._deleted); }
+// 항목별 수정 시각 보조 (호이스팅되도록 function/var 사용 — initData보다 먼저 실행됨)
+function stampArrays() { return ['annualGoals', 'monthlyGoals', 'weeklyGoals', 'dailyTasks', 'roles', 'dailyMemos']; }
+var _snap = {};
 (function initData() {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -645,22 +648,19 @@ function liveRoles() { return D.roles.filter(r => r && !r._deleted); }
   D = SEED_DATA ? normalize(JSON.parse(JSON.stringify(SEED_DATA))) : emptyData();
   persist();
 })();
-takeSnap();
 function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(D)); } catch(e) { console.error(e); } takeSnap(); }
 // ─── 항목별 수정 시각(u) ───
 // 마지막 저장 시점의 항목 직렬화를 기억해 두고, commit() 때 달라진 항목에만 u(ISO 시각)를 찍는다.
 // mergeData는 이 u로 항목 단위 최신본을 고르므로, 어느 기기에서 고쳐도 다른 기기의 옛 사본에 덮이지 않는다.
-const STAMP_ARRAYS = ['annualGoals', 'monthlyGoals', 'weeklyGoals', 'dailyTasks', 'roles', 'dailyMemos'];
-let _snap = {};
 function itemSig(x) { const c = Object.assign({}, x); delete c.u; return JSON.stringify(c, Object.keys(c).sort()); }
 function takeSnap() {
   _snap = {};
-  STAMP_ARRAYS.forEach(k => { const m = new Map(); (D[k] || []).forEach(x => x && x.id && m.set(x.id, itemSig(x))); _snap[k] = m; });
+  stampArrays().forEach(k => { const m = new Map(); (D[k] || []).forEach(x => x && x.id && m.set(x.id, itemSig(x))); _snap[k] = m; });
 }
 function stampChanges() {
   const now = new Date().toISOString();
   (D.roles || []).forEach((r, i) => { if (r) r.ord = i; });
-  STAMP_ARRAYS.forEach(k => { const m = _snap[k]; (D[k] || []).forEach(x => { if (!x || !x.id) return; if (!m || m.get(x.id) !== itemSig(x)) x.u = now; }); });
+  stampArrays().forEach(k => { const m = _snap[k]; (D[k] || []).forEach(x => { if (!x || !x.id) return; if (!m || m.get(x.id) !== itemSig(x)) x.u = now; }); });
 }
 // ─── 로컬 자동 백업 (하루 1회, 최근 7일 보관) ───
 (function dailyBackup() {
