@@ -589,7 +589,7 @@ function mergeData(remote, local) {
     // u가 양쪽 다 없을 때만 예전 규칙(최신 기기 승리)으로 떨어진다.
     const pick = (a, b) => { // a=remote, b=local
       if (!a) return b; if (!b) return a;
-      if (a.u || b.u) return (b.u || '') >= (a.u || '') ? b : a;
+      if ((a.u || b.u) && a.u !== b.u) return (b.u || '') > (a.u || '') ? b : a;
       return remoteNewer ? a : b;
     };
     (remoteNewer ? lArr : rArr || []).forEach(x => x && map.set(x[key], x));
@@ -1103,7 +1103,6 @@ function renderToday() {
     html += `</div>`;
   }
 
-  html += coachCardHtml();
 
   // ── 우측 = 투두리스트 + 회고 ──
   html += `</div><div class="tc-right">`;
@@ -1276,8 +1275,9 @@ function delTask(id) {
     return;
   }
   const t = D.dailyTasks.find(t=>t.id===id);
-  D.dailyTasks = D.dailyTasks.filter(t => t.id !== id);
-  if (t) recordAchievement(t.date);
+  const tDate = t && t.date;
+  D.dailyTasks.forEach(x => { if (x.id === id) x.date = '_deleted'; });
+  if (t) recordAchievement(tDate);
   commit(); renderToday();
 }
 function moveTaskToToday(id) {
@@ -1303,8 +1303,9 @@ function dropYesterdayTask(id) {
     return;
   }
   const t = D.dailyTasks.find(t => t.id === id);
-  D.dailyTasks = D.dailyTasks.filter(x => x.id !== id);
-  if (t) recordAchievement(t.date);
+  const tDate = t && t.date;
+  D.dailyTasks.forEach(x => { if (x.id === id) x.date = '_deleted'; });
+  if (t) recordAchievement(tDate);
   commit(); renderToday();
 }
 function saveReflection() {
@@ -1620,7 +1621,8 @@ function delRock(id) {
     setTimeout(() => { if (btn.isConnected) { btn.classList.remove('confirm'); btn.textContent = '✕'; } }, 2500);
     return;
   }
-  D.weeklyGoals = D.weeklyGoals.filter(g => g.id !== id);
+  // 묘비: 배열에서 빼면 다른 기기 사본이 병합 때 되살린다 → 보이지 않는 주차로 옮겨 둔다
+  D.weeklyGoals.forEach(g => { if (g.id === id) { g.week = '_deleted'; g.monthlyGoalId = null; } });
   commit(); renderWeekly();
 }
 function linkRock(id, mgId) {
