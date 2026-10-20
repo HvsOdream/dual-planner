@@ -584,9 +584,16 @@ function mergeData(remote, local) {
   const remoteNewer = new Date(remote._modified || remote._synced || 0) > new Date(local._modified || 0);
   const byKey = (rArr, lArr, key) => {
     const map = new Map();
-    // 오래된 쪽 먼저 깔고, 최신 쪽으로 덮어씀 (충돌 시 최신 기기 승리, 한쪽에만 있으면 유지)
+    // 항목별 수정 시각(u)이 있으면 그 항목만 비교해 최신 쪽을 남긴다 (기기 단위 승패 금지 —
+    // 한 기기에서 고친 제목이 다른 기기의 오래된 사본에 덮여 되돌아가던 문제의 원인).
+    // u가 양쪽 다 없을 때만 예전 규칙(최신 기기 승리)으로 떨어진다.
+    const pick = (a, b) => { // a=remote, b=local
+      if (!a) return b; if (!b) return a;
+      if (a.u || b.u) return (b.u || '') >= (a.u || '') ? b : a;
+      return remoteNewer ? a : b;
+    };
     (remoteNewer ? lArr : rArr || []).forEach(x => x && map.set(x[key], x));
-    (remoteNewer ? rArr : lArr || []).forEach(x => x && map.set(x[key], x));
+    (remoteNewer ? rArr : lArr || []).forEach(x => { if (!x) return; map.set(x[key], remoteNewer ? pick(x, map.get(x[key])) : pick(map.get(x[key]), x)); });
     return [...map.values()];
   };
   const out = Object.assign({}, remoteNewer ? local : remote, remoteNewer ? remote : local);
@@ -598,7 +605,8 @@ function mergeData(remote, local) {
   // byKey 합집합을 쓰면 한쪽에서 역할을 삭제해도 다른 쪽(또는 서버)에 남아있던 예전 항목이 다시 합쳐져
   // "삭제해도 동기화하면 되살아나는" 버그가 발생한다. 역할 목록은 자주 바뀌지 않으므로
   // 최신 기기의 전체 목록으로 교체하는 편이 안전하다.
-  out.roles        = remoteNewer ? (remote.roles || []) : (local.roles || []);
+  // roles도 항목별(u) 병합 + 묘비(_deleted) — 통째 교체는 다른 기기의 오래된 목록이 삭제·수정을 되돌리는 원인이었다
+  out.roles        = byKey(remote.roles || [], local.roles || [], 'id').sort((a, b) => (a.ord ?? 999) - (b.ord ?? 999));
   out.reflections  = byKey(remote.reflections  || [], local.reflections  || [], 'date');
   out.dailyMemos   = byKey(remote.dailyMemos   || [], local.dailyMemos   || [], 'id');
   // 루틴 체크: 기기 단위가 아니라 날짜별로 더 최근에 고친 쪽(u)을 남긴다
@@ -628,6 +636,7 @@ let _dirty = false;
 // 삭제 묘비: 합집합 병합(mergeData)에서 되살아나지 않도록 지우지 않고 _deleted 표시만 한다
 function liveAG() { return D.annualGoals.filter(a => a && !a._deleted); }
 function liveMG() { return D.monthlyGoals.filter(m => m && !m._deleted); }
+function liveRoles() { return D.roles.filter(r => r && !r._deleted); }
 (function initData() {
   try {
     const raw = localStorage.getItem(LS_KEY);
@@ -636,7 +645,23 @@ function liveMG() { return D.monthlyGoals.filter(m => m && !m._deleted); }
   D = SEED_DATA ? normalize(JSON.parse(JSON.stringify(SEED_DATA))) : emptyData();
   persist();
 })();
-function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(D)); } catch(e) { console.error(e); } }
+takeSnap();
+function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(D)); } catch(e) { console.error(e); } takeSnap(); }
+// ─── 항목별 수정 시각(u) ───
+// 마지막 저장 시점의 항목 직렬화를 기억해 두고, commit() 때 달라진 항목에만 u(ISO 시각)를 찍는다.
+// mergeData는 이 u로 항목 단위 최신본을 고르므로, 어느 기기에서 고쳐도 다른 기기의 옛 사본에 덮이지 않는다.
+const STAMP_ARRAYS = ['annualGoals', 'monthlyGoals', 'weeklyGoals', 'dailyTasks', 'roles', 'dailyMemos'];
+let _snap = {};
+function itemSig(x) { const c = Object.assign({}, x); delete c.u; return JSON.stringify(c, Object.keys(c).sort()); }
+function takeSnap() {
+  _snap = {};
+  STAMP_ARRAYS.forEach(k => { const m = new Map(); (D[k] || []).forEach(x => x && x.id && m.set(x.id, itemSig(x))); _snap[k] = m; });
+}
+function stampChanges() {
+  const now = new Date().toISOString();
+  (D.roles || []).forEach((r, i) => { if (r) r.ord = i; });
+  STAMP_ARRAYS.forEach(k => { const m = _snap[k]; (D[k] || []).forEach(x => { if (!x || !x.id) return; if (!m || m.get(x.id) !== itemSig(x)) x.u = now; }); });
+}
 // ─── 로컬 자동 백업 (하루 1회, 최근 7일 보관) ───
 (function dailyBackup() {
   try {
@@ -647,6 +672,7 @@ function persist() { try { localStorage.setItem(LS_KEY, JSON.stringify(D)); } ca
   } catch(e) {}
 })();
 function commit() {
+  stampChanges();
   D._modified = new Date().toISOString();
   _dirty = true; persist();
   clearTimeout(commit._t); commit._t = setTimeout(() => { if (_dirty) cloudSync(false); }, 4000);
@@ -836,7 +862,7 @@ function adoptSugg(idx) {
   const s = _sugg.weekly[idx];
   const role = D.roles.find(r => r.name === s.roleName)
     || D.roles.find(r => s.roleName && (r.name.includes(s.roleName) || s.roleName.includes(r.name)))
-    || D.roles[0];
+    || liveRoles()[0];
   if (!role) { showToast('역할이 없습니다'); return; }
   D.weeklyGoals.push({ id: uid('wg_'), week: _sugg.forWeek, roleId: role.id, title: s.title, done:false, deadlineDate:'', monthlyGoalId:null, carriedFrom:null, carryCount:0 });
   commit(); showToast('🤖 추천을 빅록으로 채택했습니다');
@@ -1436,7 +1462,7 @@ function weekPanelHtml(wk, ws, readonly) {
 
   // 역할별 빅록
   html += `<div class="card"><h3>🪨 역할별 빅록 <span class="sec-note">역할마다 가장 중요한 하나</span>${readonly ? '' : '<span style="flex:1"></span><button class="mini-btn" onclick="manageRoles()">👥 역할 관리</button>'}</h3>`;
-  D.roles.forEach(role => {
+  liveRoles().forEach(role => {
     const rocks = D.weeklyGoals.filter(g => g.week === wk && g.roleId === role.id);
     html += `<div class="role-block">
       <div class="role-head">${esc(role.icon)} ${esc(role.name)} <span class="cnt">${rocks.length ? rocks.filter(g=>g.done).length + '/' + rocks.length : ''}</span></div>`;
@@ -1546,11 +1572,11 @@ function saveCompass(wk) {
 }
 // ─── 역할 관리 ───
 function manageRoles() {
-  const rows = D.roles.map((r, i) => `
+  const rows = liveRoles().map((r, i) => `
     <div class="role-edit-row">
       <span>${esc(r.icon)}</span><span class="nm">${esc(r.name)}</span>
       <button class="mini-btn" onclick="moveRole('${r.id}',-1)" ${i===0?'disabled style="opacity:.3"':''}>↑</button>
-      <button class="mini-btn" onclick="moveRole('${r.id}',1)" ${i===D.roles.length-1?'disabled style="opacity:.3"':''}>↓</button>
+      <button class="mini-btn" onclick="moveRole('${r.id}',1)" ${i===liveRoles().length-1?'disabled style="opacity:.3"':''}>↓</button>
       <button class="mini-btn" onclick="editRole('${r.id}')">✎</button>
       <button class="mini-btn" id="rdel_${r.id}" onclick="removeRole('${r.id}')" style="color:var(--pa)">✕</button>
     </div>`).join('');
@@ -1574,7 +1600,7 @@ function removeRole(id) {
     setTimeout(() => { if (btn.isConnected) { btn.classList.remove('confirm'); btn.textContent = '✕'; } }, 3000);
     return;
   }
-  D.roles = D.roles.filter(r => r.id !== id);
+  D.roles.forEach(r => { if (r.id === id) r._deleted = true; });
   commit(); manageRoles();
 }
 function addRock(wk, roleId) {
@@ -1809,7 +1835,7 @@ function renderGoals() {
     <div class="pre-text">${esc(D.values)}</div>
     <button class="edit-btn" onclick="editLongText('values')">편집</button>`);
   html += accordionHtml('acc-roles', '👥 역할 (Roles)', `
-    ${D.roles.map(r => `<div class="role-edit-row"><span>${esc(r.icon)}</span><span class="nm">${esc(r.name)}</span><span class="ds">${esc(r.desc||'')}</span>
+    ${liveRoles().map(r => `<div class="role-edit-row"><span>${esc(r.icon)}</span><span class="nm">${esc(r.name)}</span><span class="ds">${esc(r.desc||'')}</span>
       <button class="x-btn" style="font-size:12px" onclick="editRole('${r.id}')">✎</button></div>`).join('')}
     <button class="edit-btn" onclick="editRole(null)">＋ 역할 추가</button>`);
   html += `</div>`;
@@ -2049,7 +2075,7 @@ function saveRole(id) {
   commit(); closeModal(); renderGoals(); renderWeekly();
 }
 function deleteRole(id) {
-  D.roles = D.roles.filter(r => r.id !== id);
+  D.roles.forEach(r => { if (r.id === id) r._deleted = true; });
   commit(); closeModal(); renderGoals(); renderWeekly();
 }
 
