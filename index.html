@@ -438,6 +438,63 @@ button { cursor: pointer; }
 .hw-table td.hit { color: var(--good); }
 .hw-on { color: var(--primary); font-weight: 800; }
 .hw-off { color: #c9c8c1; }
+
+/* ─── 📚 지식 ─── */
+.kn-grp { display:flex; gap:6px; margin: 0 0 10px; }
+.kn-grp button { border:1px solid var(--border); background:var(--card); border-radius:9px; padding:5px 11px; font-size:12px; font-weight:700; color:var(--text-2); }
+.kn-grp button.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+.kn-sec-h { font-size:12px; font-weight:800; color:var(--muted); margin:14px 2px 6px; display:flex; align-items:center; gap:6px; }
+.kn-card { cursor:pointer; margin-bottom:10px; }
+.kn-card:active { transform: scale(.995); }
+.kn-top { display:flex; align-items:flex-start; gap:8px; }
+.kn-name { font-size:14px; font-weight:800; flex:1; min-width:0; line-height:1.4; }
+.kn-role { font-size:10px; font-weight:700; color:var(--primary); background:var(--primary-light); border-radius:6px; padding:1px 6px; flex-shrink:0; }
+.kn-status { font-size:11.5px; color:var(--text-2); margin-top:3px; }
+.kn-steps { display:flex; gap:3px; margin-top:10px; }
+.kn-steps .st { flex:1; height:6px; border-radius:3px; background:var(--border); }
+.kn-steps .st.done { background:var(--viz-1); }
+.kn-steps .st.cur { background:var(--accent); box-shadow:0 0 0 2px var(--accent-bg); }
+.kn-steplbl { display:flex; justify-content:space-between; gap:6px; font-size:10.5px; color:var(--muted); margin-top:5px; }
+.kn-steplbl b { color:var(--accent); font-weight:800; }
+.kn-meta { display:flex; flex-wrap:wrap; gap:4px 10px; font-size:11px; color:var(--muted); margin-top:8px; }
+.kn-meta b { color:var(--text); font-weight:800; font-variant-numeric:tabular-nums; }
+.kn-meta .open b { color:var(--accent); }
+.kn-week { display:flex; align-items:flex-end; gap:6px; height:86px; padding-top:6px; }
+.kn-week .col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; gap:3px; }
+.kn-week .bar { width:100%; max-width:28px; background:var(--viz-1); border-radius:4px 4px 0 0; min-height:2px; }
+.kn-week .bar.zero { background:var(--border); }
+.kn-week .col.now .bar { background:var(--accent); }
+.kn-week .v { font-size:10px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--text-2); }
+.kn-week .w { font-size:9.5px; color:var(--muted); white-space:nowrap; }
+.kn-todo { display:flex; gap:8px; align-items:flex-start; padding:8px 0; border-bottom:1px solid var(--hairline); }
+.kn-todo:last-child { border-bottom:0; }
+.kn-todo .tt { flex:1; min-width:0; font-size:13px; font-weight:600; }
+.kn-todo .tt small { display:block; font-size:10.5px; color:var(--muted); font-weight:600; margin-top:1px; }
+.kn-todo .ok { font-size:11px; color:var(--good); font-weight:800; flex-shrink:0; padding-top:2px; }
+.kn-ms { margin-top:14px; }
+.kn-ms-h { display:flex; align-items:center; gap:7px; font-size:12.5px; font-weight:800; margin-bottom:4px; }
+.kn-ms-h .kn-dot { width:10px; height:10px; border-radius:50%; background:var(--border); flex-shrink:0; }
+.kn-ms-h.done .kn-dot { background:var(--viz-1); }
+.kn-ms-h.cur .kn-dot { background:var(--accent); box-shadow:0 0 0 3px var(--accent-bg); }
+.kn-ms-h.cur { color:var(--accent); }
+.kn-ms-h .d { font-size:10.5px; color:var(--muted); font-weight:600; }
+.kn-ms-body { border-left:2px solid var(--border); margin-left:4px; padding-left:12px; }
+.kn-ms-empty { font-size:11.5px; color:var(--muted); padding:2px 0 4px; }
+.kn-ent { padding:7px 0; border-bottom:1px solid var(--hairline); }
+.kn-ent:last-child { border-bottom:0; }
+.kn-ent .h { display:flex; gap:6px; align-items:baseline; flex-wrap:wrap; }
+.kn-ent .ty { font-size:10px; font-weight:800; border-radius:5px; padding:1px 5px; flex-shrink:0; }
+.kn-ent .ty.decision { background:var(--primary-light); color:var(--primary); }
+.kn-ent .ty.insight { background:var(--accent-bg); color:var(--accent); }
+.kn-ent .ty.next { background:var(--pb-bg); color:var(--pb); }
+.kn-ent .ty.doc { background:var(--pc-bg); color:var(--pc); }
+.kn-ent .ti { font-size:13px; font-weight:700; flex:1; min-width:0; }
+.kn-ent .dt { font-size:10.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.kn-ent .bd { font-size:12px; color:var(--text-2); margin-top:3px; white-space:pre-wrap; word-break:break-word; }
+.kn-ent .lk { font-size:10.5px; color:var(--muted); margin-top:3px; word-break:break-all; }
+.kn-ent .lk a { color:var(--primary); }
+.kn-ent .act { margin-top:5px; display:flex; gap:6px; align-items:center; }
+.kn-ent.closed .ti { color:var(--muted); text-decoration: line-through; }
 </style>
 </head>
 <body>
@@ -478,6 +535,7 @@ button { cursor: pointer; }
 <!-- ═══════ ④ 기록 ═══════ -->
 <div class="page" id="page-records"><div class="wrap" id="recordsWrap"></div></div>
 <div class="page" id="page-achv"><div class="wrap" id="achvWrap"></div></div>
+<div class="page" id="page-know"><div class="wrap" id="knowWrap"></div></div>
 
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
@@ -832,7 +890,135 @@ function planNextWeek() {
   curWeekStart.setDate(curWeekStart.getDate() + 7);
   showTab('weekly');
 }
-function renderAll() { renderToday(); renderWeekly(); renderGoals(); renderRecords(); renderAchv(); }
+function renderAll() { renderToday(); renderWeekly(); renderGoals(); renderRecords(); renderAchv(); renderKnow(); }
+
+
+// ═══════════════════ 📚 지식 (Drive planner_knowledge.json → ?action=knowledge) ═══════════════════
+// 대화(Claude)에서 쌓인 프로젝트·결정·할 일·인사이트를 읽기 전용으로 보여 준다. 쓰기는 Claude가 Drive 파일에 직접 한다.
+let _know = null, _knowErr = '', knowSel = null, knowGroup = 'project';
+try { _know = JSON.parse(localStorage.getItem('dp3_know') || 'null'); } catch(e) {}
+async function fetchKnowledge() {
+  if (!CLOUD_SYNC_URL) return;
+  try {
+    const res = await fetchTimeout(CLOUD_SYNC_URL + '?action=knowledge', {}, 10000);
+    const r = await res.json();
+    if (r.status === 'ok' && r.data && Array.isArray(r.data.projects)) {
+      _know = r.data; _knowErr = '';
+      try { localStorage.setItem('dp3_know', JSON.stringify(_know)); } catch(e) {}
+    } else _knowErr = r.message || '서버가 knowledge를 아직 지원하지 않습니다';
+  } catch(e) { _knowErr = '불러오기 실패'; }
+  renderKnow();
+}
+const KN_TYPE = { decision:'결정', insight:'인사이트', next:'할 일', doc:'문서' };
+function knDate(s) { const [y,m,d] = String(s||'').split('-').map(Number); return (y && m) ? new Date(y, m-1, d||1) : null; }
+function knEntries(pid) { return ((_know && _know.entries) || []).filter(e => e && !e._deleted && (!pid || e.project === pid)); }
+function knTag(p) { return String(p.annualGoal || '').split(/\s+[—–-]\s+/)[0].trim(); }
+function knAdopted(eid) { return D.weeklyGoals.some(g => g && !g._deleted && g.kid === eid); }
+function knRole(name) {
+  return D.roles.find(r => !r._deleted && r.name === name)
+    || D.roles.find(r => !r._deleted && name && (r.name.includes(name) || name.includes(r.name)))
+    || liveRoles()[0];
+}
+function adoptKnow(eid) {
+  const e = knEntries().find(x => x.id === eid); if (!e) return;
+  if (knAdopted(eid)) { showToast('이미 빅록으로 채택했습니다'); return; }
+  const p = (_know.projects || []).find(x => x.id === e.project) || {};
+  const role = knRole(p.role);
+  if (!role) { showToast('역할이 없습니다'); return; }
+  const wk = getWeekKey(getWeekStart(new Date()));
+  D.weeklyGoals.push({ id: uid('wg_'), week: wk, roleId: role.id, title: e.title, done:false, deadlineDate:'', monthlyGoalId:null, carriedFrom:null, carryCount:0, kid: e.id });
+  commit(); showToast('📚 이번 주 빅록으로 채택했습니다 (' + (role.icon ? role.icon + ' ' : '') + role.name + ')');
+  renderAll();
+}
+function knStepsHtml(p) {
+  const ms = p.milestones || []; if (!ms.length) return '';
+  const ci = ms.findIndex(m => m.id === p.current);
+  const cur = ms[ci];
+  const doneN = ms.filter(m => m.done).length;
+  return `<div class="kn-steps">${ms.map(m => `<div class="st ${m.id === p.current ? 'cur' : m.done ? 'done' : ''}" title="${esc(m.name)}"></div>`).join('')}</div>
+    <div class="kn-steplbl"><span>${cur ? `지금: <b>${esc(cur.name)}</b>` : '단계 미지정'}</span><span>${doneN}/${ms.length} 단계</span></div>`;
+}
+function knCardHtml(p) {
+  const es = knEntries(p.id);
+  const dec = es.filter(e => e.type === 'decision').length, ins = es.filter(e => e.type === 'insight').length;
+  const nx = es.filter(e => e.type === 'next');
+  const open = nx.filter(e => e.status !== 'done').length, closed = nx.length - open;
+  const last = es.map(e => e.date).filter(Boolean).sort().pop() || '';
+  return `<div class="card kn-card" onclick="knowSel='${esc(p.id)}';renderKnow();window.scrollTo(0,0)">
+    <div class="kn-top"><div class="kn-name">${esc(p.name)}</div>${p.role ? `<span class="kn-role">${esc(p.role)}</span>` : ''}</div>
+    ${p.status ? `<div class="kn-status">${esc(p.status)}</div>` : ''}
+    ${knStepsHtml(p)}
+    <div class="kn-meta"><span>결정 <b>${dec}</b></span><span>인사이트 <b>${ins}</b></span><span class="open">열린 할 일 <b>${open}</b></span><span>끝난 할 일 <b>${closed}</b></span><span>갱신 <b>${last ? last.slice(5).replace('-', '/') : '—'}</b></span></div>
+  </div>`;
+}
+function knWeeklyHtml() {
+  const N = 8, now = getWeekStart(new Date()), cols = [];
+  for (let i = N - 1; i >= 0; i--) { const ws = new Date(now); ws.setDate(ws.getDate() - 7*i); cols.push({ ws, k: getWeekKey(ws), n: 0 }); }
+  const idx = {}; cols.forEach((c, i) => idx[c.k] = i);
+  knEntries().forEach(e => { if (e.type !== 'decision' && e.type !== 'insight') return; const d = knDate(e.date); if (!d) return; const k = getWeekKey(getWeekStart(d)); if (k in idx) cols[idx[k]].n++; });
+  const max = Math.max(1, ...cols.map(c => c.n));
+  const total = cols.reduce((s, c) => s + c.n, 0);
+  return `<div class="card"><h3>📈 주간 누적 <span class="sec-note">결정·인사이트 · 최근 ${N}주 ${total}건</span></h3>
+    <div class="kn-week">${cols.map((c, i) => `<div class="col ${i === N-1 ? 'now' : ''}"><span class="v">${c.n || ''}</span><div class="bar ${c.n ? '' : 'zero'}" style="height:${Math.round(c.n / max * 56) + 2}px"></div><span class="w">${c.ws.getMonth()+1}/${c.ws.getDate()}</span></div>`).join('')}</div>
+  </div>`;
+}
+function knTodoHtml(e, showProj) {
+  const p = (_know.projects || []).find(x => x.id === e.project);
+  const ad = knAdopted(e.id);
+  return `<div class="kn-todo"><div class="tt">${esc(e.title)}<small>${showProj && p ? esc(shorten(p.name, 26)) + ' · ' : ''}${esc(e.date || '')}</small></div>
+    ${ad ? `<span class="ok">✓ 채택됨</span>` : `<button class="mini-btn send" onclick="event.stopPropagation();adoptKnow('${esc(e.id)}')">빅록으로 채택</button>`}</div>`;
+}
+function knEntryHtml(e) {
+  const isNext = e.type === 'next', closed = isNext && e.status === 'done';
+  const links = (e.links || []).map(l => /^https?:\/\//.test(l) ? `<a href="${esc(l)}" target="_blank" rel="noopener">${esc(shorten(l, 48))}</a>` : esc(l.split('/').pop())).join(' · ');
+  return `<div class="kn-ent ${closed ? 'closed' : ''}">
+    <div class="h"><span class="ty ${esc(e.type)}">${KN_TYPE[e.type] || esc(e.type)}</span><span class="ti">${esc(e.title)}</span><span class="dt">${esc((e.date || '').slice(5).replace('-', '/'))}</span></div>
+    ${e.body ? `<div class="bd">${esc(e.body)}</div>` : ''}
+    ${links ? `<div class="lk">📎 ${links}</div>` : ''}
+    ${isNext && !closed ? `<div class="act">${knAdopted(e.id) ? `<span class="strip-sent">✓ 빅록 채택됨</span>` : `<button class="mini-btn send" onclick="adoptKnow('${esc(e.id)}')">빅록으로 채택</button>`}</div>` : ''}
+  </div>`;
+}
+function knDetailHtml(p) {
+  const es = knEntries(p.id).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.id).localeCompare(String(b.id)));
+  const ms = p.milestones || [];
+  let html = `<div class="subnav"><button class="nav-chip back" onclick="knowSel=null;renderKnow()">‹ 지식</button><span class="pgtitle">📚 ${esc(shorten(p.name, 14))}</span></div>
+  <div class="card"><div class="kn-top"><div class="kn-name">${esc(p.name)}</div>${p.role ? `<span class="kn-role">${esc(p.role)}</span>` : ''}</div>
+    ${p.annualGoal ? `<div class="kn-status">🎯 ${esc(p.annualGoal)}</div>` : ''}${p.status ? `<div class="kn-status">${esc(p.status)}</div>` : ''}${knStepsHtml(p)}`;
+  const used = new Set();
+  ms.forEach(m => {
+    const list = es.filter(e => e.milestone === m.id); list.forEach(e => used.add(e.id));
+    const cls = m.id === p.current ? 'cur' : m.done ? 'done' : '';
+    html += `<div class="kn-ms"><div class="kn-ms-h ${cls}"><span class="kn-dot"></span>${esc(m.name)}${m.date ? `<span class="d">${esc(m.date.slice(5).replace('-', '/'))}</span>` : ''}${m.id === p.current ? `<span class="d">← 지금</span>` : ''}</div>
+      <div class="kn-ms-body">${list.length ? list.map(knEntryHtml).join('') : `<div class="kn-ms-empty">${m.done || m.id === p.current ? '기록 없음' : '아직'}</div>`}</div></div>`;
+  });
+  const rest = es.filter(e => !used.has(e.id));
+  if (rest.length) html += `<div class="kn-ms"><div class="kn-ms-h"><span class="kn-dot"></span>단계 미지정</div><div class="kn-ms-body">${rest.map(knEntryHtml).join('')}</div></div>`;
+  return html + `</div>`;
+}
+function renderKnow() {
+  const wrap = document.getElementById('knowWrap'); if (!wrap) return;
+  const head = `<div class="subnav"><button class="nav-chip back" onclick="showTab('today')">‹ 오늘</button><span class="pgtitle">📚 지식</span><span class="spacer"></span><button class="mini-btn" onclick="fetchKnowledge();showToast('📚 불러오는 중')">↻</button></div>`;
+  if (!_know) {
+    wrap.innerHTML = head + `<div class="card"><div class="achv-empty">${_knowErr ? esc(_knowErr) + ' — ' : ''}Drive DUAL_Planner_Data/planner_knowledge.json을 아직 불러오지 못했습니다.</div></div>`;
+    return;
+  }
+  const projs = (_know.projects || []).filter(p => p && !p._deleted);
+  if (knowSel) { const p = projs.find(x => x.id === knowSel); if (p) { wrap.innerHTML = knDetailHtml(p); return; } knowSel = null; }
+  const openTodos = knEntries().filter(e => e.type === 'next' && e.status !== 'done').sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  let html = head + `<div class="kn-grp"><button class="${knowGroup === 'project' ? 'on' : ''}" onclick="knowGroup='project';renderKnow()">프로젝트별</button><button class="${knowGroup === 'goal' ? 'on' : ''}" onclick="knowGroup='goal';renderKnow()">연간 목표별</button><span class="spacer" style="flex:1"></span><span class="sec-note" style="align-self:center">갱신 ${esc(_know.updated || '')}</span></div>`;
+  if (knowGroup === 'goal') {
+    const groups = new Map();
+    projs.forEach(p => { const t = knTag(p) || '미연결'; if (!groups.has(t)) groups.set(t, []); groups.get(t).push(p); });
+    [...groups.entries()].forEach(([t, list]) => {
+      const ag = liveAG().find(a => a.tag === t);
+      html += `<div class="kn-sec-h"><span class="goal-tag">${esc(t)}</span>${ag ? esc(shorten(ag.title, 30)) : ''}</div>` + list.map(knCardHtml).join('');
+    });
+  } else html += projs.map(knCardHtml).join('');
+  if (!projs.length) html += `<div class="card"><div class="achv-empty">프로젝트가 아직 없습니다.</div></div>`;
+  html += knWeeklyHtml();
+  html += `<div class="card"><h3>📝 열린 할 일 <span class="sec-note">${openTodos.length}건 · 채택하면 이번 주 빅록</span></h3>${openTodos.length ? openTodos.map(e => knTodoHtml(e, true)).join('') : '<div class="achv-empty">열린 할 일이 없습니다.</div>'}</div>`;
+  wrap.innerHTML = html;
+}
 
 // ═══════════════════ AI 추천 (일요일 정기 생성 → Drive planner_suggestions.json) ═══════════════════
 let _sugg = null;
@@ -1022,6 +1208,7 @@ function renderToday() {
     <button class="nav-chip" onclick="showTab('goals')">🎯 목표</button>
     <button class="nav-chip" onclick="showTab('records')">📊 기록</button>
     <button class="nav-chip" onclick="showTab('achv')">🏆 달성</button>
+    <button class="nav-chip" onclick="showTab('know')">📚 지식</button>
     <span class="spacer"></span>
     <a class="nav-chip ext" href="https://calendar.google.com/" target="_blank" rel="noopener">📅 구글캘린더</a>
     <a class="nav-chip ext" href="https://gw.seoil.ac.kr/" target="_blank" rel="noopener">🏫 그룹웨어</a>
@@ -2467,8 +2654,9 @@ if (CLOUD_SYNC_URL) {
   setTimeout(() => cloudSync(false), 2000);
   setTimeout(fetchEvents, 2800);
   setTimeout(fetchSuggestions, 3500);
-  setInterval(() => { cloudSync(false); fetchEvents(); fetchSuggestions(); }, 5*60*1000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) { cloudSync(false); fetchEvents(); fetchSuggestions(); } });
+  setTimeout(fetchKnowledge, 4200);
+  setInterval(() => { cloudSync(false); fetchEvents(); fetchSuggestions(); fetchKnowledge(); }, 5*60*1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { cloudSync(false); fetchEvents(); fetchSuggestions(); fetchKnowledge(); } });
 } else setCloud('☁️ 클라우드 미연결');
 </script>
 </body>
