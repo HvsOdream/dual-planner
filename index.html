@@ -7,28 +7,35 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧭</text></svg>">
 <title>DUAL Planner v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --primary: #1F4E79;
-  --primary-light: #D6E4F0;
-  --primary-dark: #163A5C;
-  --bg: #F4F3EF;
-  --card: #FFFFFF;
-  --text: #22303C;
-  --text-2: #52514e;
-  --muted: #898781;
-  --border: #E1E0D9;
-  --hairline: rgba(11,11,11,0.10);
-  --pa: #D03B3B; --pa-bg: #FBEAEA;
-  --pb: #C98500; --pb-bg: #FCF3E0;
-  --pc: #0CA30C; --pc-bg: #E9F6E9;
-  --viz-1: #2a78d6;
-  --seq-100:#cde2fb; --seq-200:#9ec5f4; --seq-350:#5598e7; --seq-500:#256abf; --seq-650:#104281;
-  --good: #0ca30c;
-  --accent: #B4622D;
-  --accent-bg: #F7EDE4;
-  --shadow: 0 2px 10px rgba(20,30,40,0.06);
-  --radius: 14px;
+  --primary: #2B3A55;        /* 만년필 잉크 네이비 */
+  --primary-light: #E4E8F0;
+  --primary-dark: #1C2740;
+  --leather: #4A2F22;        /* 가죽 커버 */
+  --leather-2: #6B4532;
+  --bg: #F6F1E7;             /* 크림 종이 */
+  --paper: #FBF8F1;
+  --card: #FDFBF6;
+  --text: #2A2622;
+  --text-2: #5A534B;
+  --muted: #948B7E;
+  --border: #E3DACB;
+  --hairline: rgba(74,47,34,0.12);
+  --rule: rgba(43,58,85,0.07); /* 노트 괘선 */
+  --pa: #B4382F; --pa-bg: #F7E6E2;
+  --pb: #B07A1A; --pb-bg: #F8EEDC;
+  --pc: #3E7D4A; --pc-bg: #E6F0E6;
+  --viz-1: #3F5A8A;
+  --seq-100:#DCE3EF; --seq-200:#B7C5DD; --seq-350:#7F97BE; --seq-500:#4B679A; --seq-650:#2B3A55;
+  --good: #3E7D4A;
+  --accent: #A85D2E;         /* 가죽 포인트 */
+  --accent-bg: #F5E8DD;
+  --shadow: 0 1px 2px rgba(60,40,20,0.06), 0 6px 18px rgba(60,40,20,0.06);
+  --radius: 12px;
+  --serif: 'Noto Serif KR', 'Apple SD Gothic Neo', Georgia, serif;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 html { -webkit-text-size-adjust: 100%; }
@@ -125,7 +132,7 @@ button { cursor: pointer; }
   padding: 11px; font-size: 13.5px; font-weight: 800; margin-top: 6px;
 }
 .sunday-card {
-  background: linear-gradient(135deg, #3d2c63, #5b4491); color:#fff;
+  background: linear-gradient(135deg, var(--leather), var(--leather-2)); color:#fff;
   border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px;
   display:flex; justify-content:space-between; align-items:center; gap:10px;
   box-shadow: var(--shadow); font-size: 13.5px; font-weight: 600;
@@ -141,7 +148,7 @@ button { cursor: pointer; }
   border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800;
 }
 .achieved-banner {
-  background: linear-gradient(135deg, #1F4E79, #2a78d6); color:#fff;
+  background: linear-gradient(135deg, var(--primary-dark), var(--viz-1)); color:#fff;
   border-radius: var(--radius); padding: 12px 16px; margin-bottom: 12px;
   font-weight: 700; font-size: 14px; display:flex; gap:8px; align-items:center;
 }
@@ -274,7 +281,7 @@ button { cursor: pointer; }
 
 /* ─── 목표 ─── */
 .vision-card {
-  background: linear-gradient(135deg, #163A5C, #1F4E79); color: #fff;
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary)); color: #fff;
   border-radius: var(--radius); padding: 16px; margin-bottom: 12px;
   box-shadow: var(--shadow);
 }
@@ -362,7 +369,7 @@ button { cursor: pointer; }
 .hm-cell.lv2 { background: var(--seq-200); color: var(--text-2); }
 .hm-cell.lv3 { background: var(--seq-350); color: #fff; }
 .hm-cell.lv4 { background: var(--seq-500); color: #fff; font-weight: 700; }
-.hm-cell.rest { background: repeating-linear-gradient(45deg,#f5f7f9,#f5f7f9 4px,#eaeef1 4px,#eaeef1 8px); color: var(--muted); }
+.hm-cell.rest { background: repeating-linear-gradient(45deg,#f3eee4,#f3eee4 4px,#e8e0d1 4px,#e8e0d1 8px); color: var(--muted); }
 .hm-cell.out { visibility: hidden; }
 .hm-cell.today-ring { box-shadow: 0 0 0 2px var(--primary); }
 .hm-legend { display:flex; align-items:center; gap: 5px; justify-content:flex-end; margin-top: 8px; font-size: 10px; color: var(--muted); }
@@ -495,6 +502,114 @@ button { cursor: pointer; }
 .kn-ent .lk a { color:var(--primary); }
 .kn-ent .act { margin-top:5px; display:flex; gap:6px; align-items:center; }
 .kn-ent.closed .ti { color:var(--muted); text-decoration: line-through; }
+
+/* ─── 와이드 레이아웃 (폴더블 펼침 · 태블릿 · 데스크톱) ─── */
+.rail { display: none; }
+.rail-btn {
+  display:flex; align-items:center; gap:10px; width:100%;
+  background:none; border:none; border-radius: 12px; padding: 10px 12px;
+  font-size: 13.5px; font-weight: 700; color: var(--text-2); text-decoration:none;
+  text-align:left; transition: background .15s, color .15s;
+}
+.rail-btn .ri { width: 22px; text-align:center; font-size: 16px; flex-shrink:0; }
+.rail-btn:hover { background: rgba(31,78,121,.07); }
+.rail-btn.on { background: var(--primary); color:#fff; box-shadow: 0 4px 14px rgba(31,78,121,.28); }
+.rail-lbl { font-size: 10px; font-weight: 800; color: var(--muted); letter-spacing: .8px; padding: 0 12px; margin: 4px 0 6px; }
+.rail-grp { display:flex; flex-direction:column; gap:2px; }
+.rail-grp + .rail-grp { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+.rail-ext { margin-top:auto !important; }
+@media (min-width: 768px) {
+  body { display: flex; flex-direction: column; min-height: 100vh; }
+  .header { padding-left: 24px; padding-right: 24px; }
+  .header h1 { font-size: 18px; }
+  .app-main { flex: 1; min-width: 0; order: 1; }
+  .rail { order: 0; }
+  .rail {
+    display: flex; flex-direction: column;
+    position: sticky; top: calc(58px + env(safe-area-inset-top)); align-self: flex-start;
+    width: 196px; flex-shrink: 0; height: calc(100vh - 58px - env(safe-area-inset-top));
+    padding: 18px 12px calc(18px + env(safe-area-inset-bottom));
+    background: rgba(255,255,255,.55); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-right: 1px solid var(--border);
+  }
+  .app-shell { display: flex; align-items: flex-start; flex: 1; }
+  /* 레일이 있으면 칩 내비·뒤로 칩은 숨김 (외부 링크 칩도 레일로 이동) */
+  .subnav .nav-chip:not(.pgtitle) { display: none; }
+  .subnav:not(:has(.pgtitle)) { display: none; }
+  .subnav .pgtitle { margin-left: 0; font-size: 20px; letter-spacing: -0.3px; }
+  .subnav { margin-bottom: 14px; }
+  .today-cols { grid-template-columns: minmax(0,5fr) minmax(0,7fr); gap: 18px; }
+  .card { padding: 16px; }
+  .today-date { font-size: 26px; }
+  .streak-chip { font-size: 14px; padding: 8px 14px; }
+}
+@media (min-width: 1100px) {
+  .rail { width: 220px; }
+  .today-cols { grid-template-columns: minmax(0,2fr) minmax(0,3fr); gap: 22px; }
+}
+/* ─── 📖 다이어리 스킨 ─── */
+body {
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(255,255,255,.55), transparent 60%),
+    repeating-linear-gradient(0deg, transparent 0 31px, var(--rule) 31px 32px),
+    var(--bg);
+  background-attachment: fixed;
+}
+.header {
+  background: linear-gradient(180deg, var(--leather-2), var(--leather));
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,.08), 0 2px 8px rgba(40,20,10,.25);
+}
+.header h1 { font-family: var(--serif); font-weight: 900; letter-spacing: .2px; }
+.header .sub { opacity: .75; }
+.hdr-btn { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.22); }
+.card, .task-row, .acc-head, .stat-tile {
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow);
+}
+.card h3, .pgtitle, .today-date, .week-nav .wlabel, .modal h3, .achv-year .m-label, .hm-nav .m-label, .kn-name, .coach-title {
+  font-family: var(--serif);
+}
+.card h3 { color: var(--primary-dark); letter-spacing: -.1px; }
+.card h3::after { content:''; flex:1; height:1px; background: var(--hairline); margin-left: 6px; }
+.today-date { font-weight: 900; color: var(--primary-dark); }
+.today-sub { font-variant-numeric: tabular-nums; }
+.streak-chip { background: var(--card); border: 1px solid var(--accent); color: var(--accent); }
+.nav-chip { background: var(--card); }
+.nav-chip.back { color: var(--leather-2); border-color: var(--hairline); }
+.task-group-label { color: var(--leather-2); letter-spacing: 1px; }
+.task-group-label::before { content: '§ '; opacity: .6; }
+.chk { background: var(--paper); border-color: #CFC4B1; border-radius: 6px; }
+.chk.on { background: var(--primary); border-color: var(--primary); }
+.add-bar input, .wg-add input, .reflect-box textarea, .one-input, .saw-item input, .modal input[type=text], .modal textarea, .modal select {
+  background: var(--paper); border-color: var(--border);
+}
+.add-bar input:focus, .wg-add input:focus, .reflect-box textarea:focus, .one-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.add-bar .go, .wg-add button, .strip-cta, .modal .m-primary, .mini-btn.send { background: var(--primary); color:#fff; border-color: var(--primary); }
+.mini-btn.send { background: var(--primary-light); color: var(--primary-dark); border-color: var(--primary-light); }
+.saw-item { background: var(--paper); border: 1px dashed var(--border); }
+.panel-last .card { background: #F3EDE1; }
+.vision-card { background: linear-gradient(135deg, var(--leather), var(--leather-2)); }
+.vision-card .v-text { font-family: var(--serif); font-weight: 700; }
+.goal-tag { background: var(--leather-2); }
+.mg-list { background: var(--paper); }
+.achieved-banner { background: linear-gradient(135deg, var(--primary-dark), var(--viz-1)); }
+.recover-card { background: var(--accent-bg); }
+.sunday-card { box-shadow: var(--shadow); }
+.tog-chip { background: var(--paper); }
+.tog-chip.on { background: var(--primary); border-color: var(--primary); }
+.kn-grp button { background: var(--paper); }
+.kn-role { background: var(--accent-bg); color: var(--accent); }
+.rail { background: rgba(251,248,241,.82); border-right: 1px solid var(--border); }
+.rail-btn { color: var(--text-2); }
+.rail-btn:hover { background: rgba(74,47,34,.06); }
+.rail-btn.on { background: var(--leather-2); box-shadow: 0 4px 14px rgba(74,47,34,.28); }
+.rail-lbl { color: var(--leather-2); opacity: .7; }
+.toast { background: var(--primary-dark); }
+@media (min-width: 768px) {
+  .subnav .pgtitle { font-size: 22px; color: var(--primary-dark); }
+  .subnav .pgtitle::after { content:''; display:block; width: 44px; height: 2px; background: var(--accent); margin-top: 6px; border-radius: 2px; }
+}
 </style>
 </head>
 <body>
@@ -510,6 +625,8 @@ button { cursor: pointer; }
   </div>
 </div>
 
+<div class="app-shell">
+<div class="app-main" id="appMain">
 <!-- ═══════ ① 오늘 ═══════ -->
 <div class="page active" id="page-today"><div class="wrap" id="todayWrap"></div></div>
 
@@ -536,6 +653,28 @@ button { cursor: pointer; }
 <div class="page" id="page-records"><div class="wrap" id="recordsWrap"></div></div>
 <div class="page" id="page-achv"><div class="wrap" id="achvWrap"></div></div>
 <div class="page" id="page-know"><div class="wrap" id="knowWrap"></div></div>
+</div><!-- /app-main -->
+
+<!-- ═══════ 와이드(폴더블 펼침·태블릿) 사이드 레일 ═══════ -->
+<nav class="rail" id="rail" aria-label="메뉴">
+  <div class="rail-grp">
+    <button class="rail-btn on" data-tab="today" onclick="showTab('today')"><span class="ri">☀️</span>오늘</button>
+    <button class="rail-btn" data-tab="weekly" onclick="goThisWeek();showTab('weekly')"><span class="ri">🧭</span>나침반</button>
+    <button class="rail-btn" data-tab="goals" onclick="showTab('goals')"><span class="ri">🎯</span>목표</button>
+    <button class="rail-btn" data-tab="know" onclick="showTab('know')"><span class="ri">📚</span>지식</button>
+  </div>
+  <div class="rail-grp">
+    <div class="rail-lbl">돌아보기</div>
+    <button class="rail-btn" data-tab="records" onclick="showTab('records')"><span class="ri">📊</span>기록</button>
+    <button class="rail-btn" data-tab="achv" onclick="showTab('achv')"><span class="ri">🏆</span>달성</button>
+  </div>
+  <div class="rail-grp rail-ext">
+    <div class="rail-lbl">바로가기</div>
+    <a class="rail-btn" href="https://calendar.google.com/" target="_blank" rel="noopener"><span class="ri">📅</span>구글캘린더</a>
+    <a class="rail-btn" href="https://gw.seoil.ac.kr/" target="_blank" rel="noopener"><span class="ri">🏫</span>그룹웨어</a>
+  </div>
+</nav>
+</div><!-- /app-shell -->
 
 <div id="modalRoot"></div>
 <div class="toast" id="toast"></div>
@@ -882,6 +1021,7 @@ function compassDone(week) {
 function showTab(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('.rail-btn[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
   window.scrollTo(0, 0);
   renderAll();
 }
@@ -1234,7 +1374,7 @@ function renderToday() {
   // 월말·월초 → 월간 점검 제안
   const mrT = monthReviewTarget();
   if (mrT && !D.monthlyReviews[mrT]) {
-    html += `<div class="sunday-card" style="background:linear-gradient(135deg,#1F4E79,#2a6f97)">
+    html += `<div class="sunday-card" style="background:linear-gradient(135deg,var(--primary-dark),var(--viz-1))">
       <span>📆 ${parseInt(mrT.slice(5))}월을 점검할 시간입니다. 월간 목표를 돌아보고 다음 달을 준비하세요.</span>
       <button onclick="openMonthlyReview('${mrT}')">점검하기</button>
     </div>`;
