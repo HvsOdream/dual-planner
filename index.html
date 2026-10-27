@@ -2101,9 +2101,13 @@ function renderGoals() {
     <div class="v-text">${esc(D.vision || '비전 선언문을 작성해보세요')}</div>
     <button class="v-edit" onclick="editVision()">편집</button>
     <button class="v-edit" style="margin-left:6px" onclick="openMonthlyReview()">📆 월간 점검</button>
+    <button class="v-edit" style="margin-left:6px" onclick="goalsShowNext=!goalsShowNext;renderGoals()">${goalsShowNext ? '‹ 올해 목표' : (new Date().getFullYear()+1) + '년 목표 ›'}</button>
   </div>`;
 
-  liveAG().forEach(ag => {
+  const gy = new Date().getFullYear() + (goalsShowNext ? 1 : 0);
+  const agShown = liveAG().filter(a => (a.year || gy) === gy);
+  if (goalsShowNext && !agShown.length) html += `<div class="card"><div class="sec-note">${gy}년 목표가 아직 없습니다.</div></div>`;
+  agShown.forEach(ag => {
     const mgs = liveMG().filter(m => m.goalId === ag.id).sort((a,b) => a.month.localeCompare(b.month));
     const wkRocks = D.weeklyGoals.filter(g => g.week === curWk && g.monthlyGoalId && mgs.some(m => m.id === g.monthlyGoalId));
     html += `<div class="card goal-card">
@@ -2411,6 +2415,7 @@ function deleteRole(id) {
 
 // ═══════════════════ ⑤ 달성 (올해 한 것 한눈에) ═══════════════════
 var achvYear = new Date().getFullYear();
+var goalsShowNext = false; // 목표 탭: 다음 해 연간 목표는 토글로만 표시
 function moveAchvYear(n) { achvYear += n; renderAchv(); }
 function renderAchv() {
   const wrap = document.getElementById('achvWrap'); if (!wrap) return;
